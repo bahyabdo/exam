@@ -250,18 +250,33 @@ async function violation(reason){
 }
 function arm(){
   const V=r=>violation(r);
-  document.addEventListener('visibilitychange',()=>{if(document.hidden)V('ترك الصفحة / تبديل التبويب')});
-  window.addEventListener('blur',()=>V('فقدان التركيز على نافذة الاختبار'));
+  const blurOn=()=>{if(S&&!S.done)app.style.filter='blur(18px)'};
+  S.armAt=Date.now()+600;
+  let initW=window.innerWidth,initH=window.innerHeight;
+
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){blurOn();V('ترك الصفحة / تبديل التبويب')}});
+  window.addEventListener('blur',()=>{blurOn();V('فقدان التركيز / محاولة تصوير أو فتح قائمة')});
+  document.addEventListener('mouseleave',()=>{blurOn();V('خروج المؤشر من نافذة الاختبار')});
+  window.addEventListener('resize',()=>{
+    if(S&&!S.done&&(Math.abs(window.innerWidth-initW)>120||Math.abs(window.innerHeight-initH)>160)){
+      blurOn();V('محاولة تقسيم الشاشة أو تغيير حجم النافذة');
+    }
+  });
   window.addEventListener('pagehide',()=>V('إغلاق أو تحديث الصفحة'));
   window.addEventListener('beforeunload',e=>{if(S&&!S.done){e.preventDefault();e.returnValue=''}});
-  document.addEventListener('fullscreenchange',()=>{if(S.fsOk&&!document.fullscreenElement)V('الخروج من وضع ملء الشاشة')});
-  ['contextmenu','copy','cut','paste','dragstart'].forEach(ev=>document.addEventListener(ev,e=>{if(S&&!S.done)e.preventDefault()}));
-  document.addEventListener('keyup',e=>{if(e.key==='PrintScreen'){try{navigator.clipboard.writeText('')}catch{}V('محاولة تصوير الشاشة')}});
+  document.addEventListener('fullscreenchange',()=>{if(S.fsOk&&!document.fullscreenElement){blurOn();V('الخروج من وضع ملء الشاشة')}});
+  ['contextmenu','copy','cut','paste','dragstart','selectstart'].forEach(ev=>document.addEventListener(ev,e=>{if(S&&!S.done)e.preventDefault()}));
+  document.addEventListener('keyup',e=>{
+    if(e.key==='PrintScreen'||e.keyCode===44){blurOn();try{navigator.clipboard.writeText('')}catch{}V('محاولة تصوير الشاشة')}
+  });
   document.addEventListener('keydown',e=>{
     if(!S||S.done)return;const k=e.key.toLowerCase();
-    if(e.key==='PrintScreen'){try{navigator.clipboard.writeText('')}catch{}e.preventDefault();return V('محاولة تصوير الشاشة')}
-    if(e.metaKey&&e.shiftKey&&['3','4','5'].includes(k))return V('محاولة تصوير الشاشة');
-    if(e.key==='F12'||((e.ctrlKey||e.metaKey)&&e.shiftKey&&['i','j','c','s'].includes(k))||((e.ctrlKey||e.metaKey)&&['c','v','x','p','s','u','a','f'].includes(k))||(e.altKey&&k==='tab')||e.key==='Meta'||e.key==='OS'){e.preventDefault();if(e.key==='F12'||e.shiftKey)V('محاولة فتح أدوات المطوّر / لقطة')}
+    if(e.key==='PrintScreen'||e.keyCode===44||e.metaKey||e.key==='Meta'||e.key==='OS'){
+      blurOn();try{navigator.clipboard.writeText('')}catch{}e.preventDefault();return V('محاولة تصوير الشاشة أو فتح قائمة النظام');
+    }
+    if(e.key==='F12'||((e.ctrlKey||e.metaKey)&&e.shiftKey&&['i','j','c','s'].includes(k))||((e.ctrlKey||e.metaKey)&&['c','v','x','p','s','u','a','f'].includes(k))||(e.altKey&&k==='tab')){
+      blurOn();e.preventDefault();V('محاولة استخدام اختصار محظور');
+    }
   });
 }
 
