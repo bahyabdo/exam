@@ -66,7 +66,7 @@ body.exam,body.exam *{-webkit-user-select:none;user-select:none}body.exam input,
 // =========================================================================
 
 const $=s=>document.querySelector(s),app=$('#app');
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&','<':'<','>':'>','"':'"',"'":'''}[c]));
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const rid=(n=8)=>{const a=new Uint8Array(n);crypto.getRandomValues(a);return[...a].map(b=>b.toString(16).padStart(2,'0')).join('')};
 let teacher=JSON.parse(localStorage.getItem('t_user')||'null'),timers=[],S=null;
 
