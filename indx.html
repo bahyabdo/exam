@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>منصة الاختبارات الآمنة</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{--bg:#070b1a;--card:rgba(255,255,255,.06);--bd:rgba(255,255,255,.13);--tx:#eef2ff;--mut:#9aa6c7;--a:#6366f1;--b:#22d3ee;--ok:#34d399;--bad:#fb7185;--warn:#fbbf24}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;font-family:Cairo,Tahoma,sans-serif;color:var(--tx);background:radial-gradient(900px 500px at 85% -10%,rgba(99,102,241,.35),transparent),radial-gradient(700px 500px at 0% 100%,rgba(34,211,238,.22),transparent),var(--bg)}
+#app{max-width:980px;margin:0 auto;padding:24px 16px 60px}
+h1,h2,h3{margin:.2em 0}
+.mut{color:var(--mut)}
+.hero{text-align:center;padding-top:6vh}
+.logo{font-size:64px;filter:drop-shadow(0 0 24px rgba(99,102,241,.7))}
+.hero h1{font-size:clamp(28px,5vw,46px);font-weight:800;background:linear-gradient(90deg,var(--b),var(--a));-webkit-background-clip:text;background-clip:text;color:transparent}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px;margin-top:34px}
+.role{cursor:pointer;color:var(--tx);font-family:inherit;background:var(--card);border:1px solid var(--bd);border-radius:22px;padding:34px 20px;display:flex;flex-direction:column;gap:8px;align-items:center;backdrop-filter:blur(10px);transition:.25s}
+.role:hover{transform:translateY(-6px);border-color:var(--b);box-shadow:0 14px 40px rgba(34,211,238,.18)}
+.role span{font-size:54px}.role b{font-size:22px}.role small{color:var(--mut)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:20px;padding:22px;backdrop-filter:blur(10px);margin-bottom:16px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.between{justify-content:space-between}
+label{display:block;font-size:14px;color:var(--mut);margin:12px 0 5px}
+input,select,textarea{width:100%;font-family:inherit;font-size:16px;color:var(--tx);background:rgba(255,255,255,.07);border:1px solid var(--bd);border-radius:12px;padding:11px 13px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--b)}
+select option{color:#000}
+input[type=checkbox],input[type=radio]{width:auto;accent-color:var(--b)}
+textarea{min-height:80px;resize:vertical}
+.btn{font-family:inherit;font-size:16px;font-weight:600;cursor:pointer;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:10px 18px;border-radius:12px;transition:.2s}
+.btn:hover{border-color:var(--b)}
+.pri{background:linear-gradient(90deg,var(--a),var(--b));border:none;color:#fff}
+.pri:hover{filter:brightness(1.1)}
+.danger{color:var(--bad)}.btn[disabled]{opacity:.5;pointer-events:none}
+.badge{display:inline-block;padding:2px 11px;border-radius:99px;font-size:13px;font-weight:600;background:rgba(255,255,255,.1)}
+.b-ok{background:rgba(52,211,153,.18);color:var(--ok)}.b-bad{background:rgba(251,113,133,.18);color:var(--bad)}.b-warn{background:rgba(251,191,36,.18);color:var(--warn)}.b-info{background:rgba(34,211,238,.18);color:var(--b)}
+.grid3{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
+.tabs{display:flex;gap:6px;margin-bottom:12px}.tabs .btn.on{background:linear-gradient(90deg,var(--a),var(--b));border:none}
+.opt{display:flex;gap:12px;align-items:center;width:100%;text-align:right;font-family:inherit;font-size:18px;color:var(--tx);cursor:pointer;background:rgba(255,255,255,.06);border:2px solid var(--bd);border-radius:14px;padding:14px 16px;margin:8px 0;transition:.15s}
+.opt:hover{border-color:var(--b)}.opt.sel{border-color:var(--b);background:rgba(34,211,238,.14)}
+.opt i{font-style:normal;width:28px;height:28px;border-radius:8px;border:2px solid var(--mut);display:inline-flex;align-items:center;justify-content:center;font-size:14px;flex:none}
+.opt.sel i{background:var(--b);border-color:var(--b);color:#000}
+.bar{height:8px;border-radius:9px;background:rgba(255,255,255,.1);overflow:hidden}.bar>div{height:100%;background:linear-gradient(90deg,var(--a),var(--b));transition:width .4s}
+.qc{border:1px solid var(--bd);border-radius:16px;padding:16px;margin:12px 0;background:rgba(0,0,0,.18)}
+.codebox{font-size:clamp(54px,12vw,110px);font-weight:800;letter-spacing:.18em;text-align:center;direction:ltr;background:linear-gradient(90deg,var(--b),var(--a));-webkit-background-clip:text;background-clip:text;color:transparent}
+.qrbox{background:#fff;padding:12px;border-radius:16px;display:inline-block}
+table{width:100%;border-collapse:collapse;font-size:15px}th,td{padding:10px 8px;border-bottom:1px solid var(--bd);text-align:right}th{color:var(--mut);font-weight:600}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.modal>div{background:#101732;border:1px solid var(--bd);border-radius:20px;padding:22px;max-width:640px;width:100%;max-height:88vh;overflow:auto}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#1b2347;border:1px solid var(--b);padding:12px 20px;border-radius:14px;z-index:99}
+.timer{font-weight:800;font-size:22px;direction:ltr}.timer.low{color:var(--bad);animation:bl 1s infinite}@keyframes bl{50%{opacity:.4}}
+.center{text-align:center}.big{font-size:60px}
+body.exam,body.exam *{-webkit-user-select:none;user-select:none}body.exam input,body.exam textarea{-webkit-user-select:text;user-select:text}
+#wm{position:fixed;inset:0;pointer-events:none;z-index:40}
+@media print{body{display:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// =========================================================================
+// ضع رابط قاعدة بيانات Firebase Realtime Database هنا (بدون شرطة مائلة في النهاية)
+    const FIREBASE_URL = "https://test-9036f-default-rtdb.firebaseio.com";
+// =========================================================================
+
+const $=s=>document.querySelector(s),app=$('#app');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&','<':'<','>':'>','"':'"',"'":'''}[c]));
+const rid=(n=8)=>{const a=new Uint8Array(n);crypto.getRandomValues(a);return[...a].map(b=>b.toString(16).padStart(2,'0')).join('')};
+let teacher=JSON.parse(localStorage.getItem('t_user')||'null'),timers=[],S=null;
+
+function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),3200)}
+function show(h){timers.forEach(clearInterval);timers=[];app.innerHTML=h}
+function modal(h){const m=document.createElement('div');m.className='modal';m.innerHTML='<div>'+h+'</div>';m.onclick=e=>{if(e.target===m)m.remove()};document.body.appendChild(m);return m}
+const stLabel={active:['يؤدي الاختبار','b-info'],submitted:['سلّم','b-ok'],expired:['انتهى الوقت','b-warn'],locked:['مقفل (مخالفة)','b-bad'],unlocked:['مسموح له بالعودة','b-warn']};
+const badge=s=>`<span class="badge ${stLabel[s][1]}">${stLabel[s][0]}</span>`;
+
+/* ================= طبقة الاتصال بـ Firebase ================= */
+async function fb(path, method='GET', body=null){
+  if(FIREBASE_URL.includes('ضع-رابط-مشروعك')) throw new Error('يرجى وضع رابط Firebase في الكود أولاً');
+  const r = await fetch(`${FIREBASE_URL}/${path}.json`, {
+    method,
+    headers: {'Content-Type':'application/json'},
+    body: body !== null ? JSON.stringify(body) : undefined
+  });
+  if(!r.ok) throw new Error('خطأ في الاتصال بقاعدة البيانات');
+  return r.json();
+}
+async function hashPw(pw){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+/* ================= منطق التصحيح والأكواد ================= */
+const norm = s => String(s??'').toLowerCase().replace(/[\u064B-\u065F\u0640]/g,'').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/\s+/g,' ').trim();
+const shuffle = a => { a=[...a]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+
+function scoreQ(q, a, att) {
+  const p = Number(q.points)||0;
+  if(q.type==='essay'){ const m=att.manual&&att.manual[q.id]; return m==null?null:Math.min(Number(m),p); }
+  if(a==null||a==='') return 0;
+  if(q.type==='mcq'||q.type==='tf') return Number(a)===Number(q.correct)?p:0;
+  if(q.type==='multi') return [...(q.correct||[])].map(Number).sort().join()===[].concat(a).map(Number).sort().join()?p:0;
+  if(q.type==='short') return (q.correct||[]).some(c=>norm(c)===norm(a))?p:0;
+  return 0;
+}
+function gradeExam(ex, att) {
+  let s=0, t=0, pending=false;
+  for(const q of (ex.questions||[])){
+    t += Number(q.points)||0;
+    const r = scoreQ(q, (att.answers||{})[q.id], att);
+    if(r==null) pending=true; else s+=r;
+  }
+  return {score:s, total:t, pending};
+}
+function genCode(){ return String(Math.floor(100000 + Math.random()*900000)); }
+
+/* ================= الرئيسية ================= */
+function home(){
+  show(`<div class="hero"><div class="logo">🛡️</div><h1>منصة الاختبارات الآمنة</h1>
+  <p class="mut">اختبارات إلكترونية عادلة للكلية — أكواد دخول متغيرة وبيئة اختبار مراقَبة</p>
+  <div class="grid2"><button class="role" id="rt"><span>👨‍🏫</span><b>أنا معلم</b><small>صمّم الاختبارات وتابع النتائج</small></button>
+  <button class="role" id="rs"><span>🎓</span><b>أنا طالب</b><small>ادخل الاختبار بالكود أو بمسح QR</small></button></div></div>`);
+  $('#rt').onclick=()=>teacher?dash():tAuth();$('#rs').onclick=()=>sJoin();
+}
+
+/* ================= الطالب ================= */
+function sJoin(code=''){
+  show(`<div style="max-width:480px;margin:5vh auto"><div class="card">
+  <button class="btn" id="bk">→ رجوع</button><h2 class="center">🎓 دخول الاختبار</h2>
+  <label>كود الاختبار (6 أرقام)</label><input id="code" inputmode="numeric" maxlength="6" value="${esc(code)}" placeholder="••••••" style="text-align:center;font-size:30px;letter-spacing:.3em;direction:ltr">
+  <label>الاسم الكامل</label><input id="nm"><label>الرقم الجامعي</label><input id="sid">
+  <div class="card" style="margin:16px 0 0;font-size:14px;background:rgba(251,191,36,.08)"><b>⚠️ قواعد الاختبار</b><br>• يعمل الاختبار بوضع ملء الشاشة.<br>• الخروج من الشاشة أو تبديل التبويب أو التطبيق أو محاولة التصوير <b>يُنهي اختبارك فوراً</b> ولا يمكنك الدخول مرة أخرى إلا بإذن المعلم.<br>• النسخ واللصق مغلقان.</div>
+  <button class="btn pri" id="go" style="width:100%;margin-top:16px;font-size:18px">ابدأ الاختبار</button></div></div>`);
+  $('#bk').onclick=home;
+  $('#go').onclick=()=>startExam($('#code').value.trim(),$('#nm').value.trim(),$('#sid').value.trim());
+}
+
+async function startExam(code,name,sid){
+  if(!/^\d{6}$/.test(code)||!name||!sid)return toast('أكمل الكود والاسم والرقم الجامعي');
+  const el=document.documentElement,fsOk=!!el.requestFullscreen;
+  if(fsOk){try{await el.requestFullscreen()}catch{return toast('يجب السماح بوضع ملء الشاشة لبدء الاختبار')}}
+  try{
+    const allExams = await fb('exams') || {};
+    const now = Date.now();
+    const ex = Object.values(allExams).find(e => e && e.open && (e.code === code || (e.prev === code && now < (e.prevUntil||0))));
+    if(!ex) throw new Error('الكود غير صحيح أو انتهت صلاحيته');
+
+    const exAtts = await fb(`attempts/${ex.id}`) || {};
+    let att = Object.values(exAtts).find(x => x && x.sid.toLowerCase() === sid.toLowerCase());
+    if(att){
+      if(att.status !== 'unlocked') throw new Error('لا يمكن الدخول مرة أخرى: هذا الرقم الجامعي دخل الاختبار من قبل. تواصل مع المعلم.');
+      if(now > att.deadline) throw new Error('انتهى وقت هذا الاختبار');
+      att.status = 'active';
+      await fb(`attempts/${ex.id}/${att.id}/status`, 'PUT', 'active');
+    } else {
+      const aid = rid(10);
+      const order = (ex.shuffleQ ? shuffle(ex.questions) : ex.questions).map(q=>q.id);
+      const opts = {};
+      if(ex.shuffleO) for(const q of ex.questions) if(q.type==='mcq'||q.type==='multi') opts[q.id]=shuffle(q.options.map((_,i)=>i));
+      att = { id:aid, examId:ex.id, name, sid, status:'active', startedAt:now, deadline:now+ex.duration*60000, answers:{}, violations:[], manual:{}, order, opts };
+      await fb(`attempts/${ex.id}/${aid}`, 'PUT', att);
+    }
+
+    const qs = att.order.map(id=>ex.questions.find(q=>q.id===id)).filter(Boolean).map(q=>({
+      id:q.id, type:q.type, text:q.text, points:q.points,
+      options: q.type==='tf'?[{i:0,t:'صح'},{i:1,t:'خطأ'}]:(q.type==='mcq'||q.type==='multi')?(att.opts[q.id]||q.options.map((_,i)=>i)).map(i=>({i,t:q.options[i]})):[]
+    }));
+    runExam({ex, att, qs}, fsOk);
+  }catch(e){
+    if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});
+    toast(e.message);
+  }
+}
+
+function runExam({ex, att, qs}, fsOk){
+  S={ex, aid:att.id, qs, ans:att.answers||{}, i:0, end:att.deadline, allowBack:ex.allowBack, name:att.name, sid:att.sid, title:ex.title, armAt:Date.now()+2500, done:false, locked:false, deb:{}, fsOk};
+  document.body.classList.add('exam');
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200"><text transform="rotate(-22 160 100)" x="10" y="110" fill="white" fill-opacity=".09" font-size="20" font-family="sans-serif">${esc(att.name)} • ${esc(att.sid)}</text></svg>`;
+  const w=document.createElement('div');w.id='wm';w.style.background=`url("data:image/svg+xml,${encodeURIComponent(svg)}")`;document.body.appendChild(w);
+  arm();renderQ();
+  S.tm=setInterval(()=>{const l=S.end-Date.now();const t=$('#tm');if(t){t.textContent=fmt(l);t.classList.toggle('low',l<60000)}if(l<=0)submitNow()},1000);
+  S.pg=setInterval(async()=>{
+    try{
+      const st = await fb(`attempts/${S.ex.id}/${S.aid}/status`);
+      if(st && st !== 'active') end(st);
+    }catch{}
+  },10000);
+}
+const fmt=ms=>{ms=Math.max(0,Math.floor(ms/1000));const m=Math.floor(ms/60),s=ms%60;return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')};
+function sendAns(qid,delay=0){
+  clearTimeout(S.deb[qid]);
+  const go=()=>{ if(!S.done) fb(`attempts/${S.ex.id}/${S.aid}/answers/${qid}`, 'PUT', S.ans[qid]??null).catch(()=>{}); };
+  delay?S.deb[qid]=setTimeout(go,delay):go();
+}
+function renderQ(){
+  const q=S.qs[S.i],n=S.qs.length,last=S.i===n-1,a=S.ans[q.id],L='أبجدهوزحطيكلمن';
+  let body='';
+  if(q.type==='mcq'||q.type==='tf')body=q.options.map((o,k)=>`<button class="opt ${a===o.i?'sel':''}" data-v="${o.i}"><i>${L[k]||k+1}</i>${esc(o.t)}</button>`).join('');
+  else if(q.type==='multi')body='<p class="mut">اختر كل الإجابات الصحيحة</p>'+q.options.map((o,k)=>`<button class="opt ${(a||[]).includes(o.i)?'sel':''}" data-v="${o.i}"><i>${(a||[]).includes(o.i)?'✓':L[k]||k+1}</i>${esc(o.t)}</button>`).join('');
+  else if(q.type==='short')body=`<input id="tx" value="${esc(a||'')}" placeholder="اكتب إجابتك هنا" autocomplete="off">`;
+  else body=`<textarea id="tx" style="min-height:200px" placeholder="اكتب إجابتك هنا">${esc(a||'')}</textarea>`;
+  const dots=S.allowBack?`<div class="row" style="margin-top:14px">${S.qs.map((x,k)=>`<button class="btn" data-g="${k}" style="padding:4px 11px;${k===S.i?'border-color:var(--b)':''}${S.ans[x.id]!=null&&S.ans[x.id]!==''?';background:rgba(52,211,153,.2)':''}">${k+1}</button>`).join('')}</div>`:'';
+  app.innerHTML=`<div class="row between"><b>${esc(S.title)}</b><span class="timer" id="tm">${fmt(S.end-Date.now())}</span></div>
+  <div class="bar" style="margin:10px 0"><div style="width:${(S.i+1)/n*100}%"></div></div>
+  <div class="card"><div class="row between"><span class="badge b-info">سؤال ${S.i+1} من ${n}</span><span class="badge">${q.points} درجة</span></div>
+  <h2 style="line-height:1.7;white-space:pre-wrap;margin:14px 0">${esc(q.text)}</h2>${body}</div>
+  <div class="row between"><button class="btn" id="pv" ${S.allowBack&&S.i>0?'':'style="visibility:hidden"'}>→ السابق</button>
+  <button class="btn pri" id="nx">${last?'إنهاء وتسليم ✔':'التالي ←'}</button></div>${dots}`;
+  app.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{
+    const v=+b.dataset.v;
+    if(q.type==='multi'){const s=new Set(S.ans[q.id]||[]);s.has(v)?s.delete(v):s.add(v);S.ans[q.id]=[...s]}else S.ans[q.id]=v;
+    sendAns(q.id);renderQ()});
+  const tx=$('#tx');if(tx)tx.oninput=()=>{S.ans[q.id]=tx.value;sendAns(q.id,500)};
+  $('#pv').onclick=()=>{S.i--;renderQ()};
+  $('#nx').onclick=()=>last?confirmSubmit():(S.i++,renderQ());
+  app.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{S.i=+b.dataset.g;renderQ()});
+}
+function confirmSubmit(){
+  const un=S.qs.filter(q=>S.ans[q.id]==null||S.ans[q.id]===''||(Array.isArray(S.ans[q.id])&&!S.ans[q.id].length)).length;
+  const m=modal(`<h3>تسليم الاختبار؟</h3><p>${un?`لديك <b style="color:var(--warn)">${un}</b> سؤال بدون إجابة. `:''}بعد التسليم لا يمكن التعديل.</p><div class="row"><button class="btn pri" id="y">نعم، سلّم</button><button class="btn" id="n">رجوع</button></div>`);
+  m.querySelector('#y').onclick=()=>{m.remove();submitNow()};m.querySelector('#n').onclick=()=>m.remove();
+}
+async function submitNow(){
+  if(S.done)return;S.done=true;
+  Object.keys(S.deb).forEach(k=>{clearTimeout(S.deb[k]); fb(`attempts/${S.ex.id}/${S.aid}/answers/${k}`, 'PUT', S.ans[k]??null).catch(()=>{});});
+  try{
+    await fb(`attempts/${S.ex.id}/${S.aid}`, 'PATCH', {status:'submitted', finishedAt:Date.now(), answers:S.ans});
+    const info = S.ex.showScore ? gradeExam(S.ex, {answers:S.ans, manual:{}}) : null;
+    end('submitted', info);
+  }catch{end('submitted')}
+}
+function end(status,info){
+  S.done=true;clearInterval(S.tm);clearInterval(S.pg);
+  if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});
+  document.body.classList.remove('exam');$('#wm')&&$('#wm').remove();
+  const sc=info&&info.score!=null?`<h2>درجتك: ${info.score} / ${info.total}${info.pending?' <small class="mut">(أسئلة المقال تُصحَّح لاحقاً)</small>':''}</h2>`:'';
+  app.innerHTML=status==='locked'?`<div class="card center" style="margin-top:8vh"><div class="big">🚫</div><h2 style="color:var(--bad)">تم إنهاء الاختبار</h2><p class="mut">تم رصد مخالفة (خروج من الاختبار). حُفظت إجاباتك حتى هذه اللحظة، ولا يمكنك الدخول مرة أخرى إلا بإذن المعلم.</p></div>`
+  :`<div class="card center" style="margin-top:8vh"><div class="big">✅</div><h2>تم تسليم إجاباتك</h2>${sc}<p class="mut">يمكنك إغلاق الصفحة الآن.</p></div>`;
+}
+async function violation(reason){
+  if(!S||S.done||S.locked||Date.now()<S.armAt)return;
+  S.locked=true;
+  const u = `${FIREBASE_URL}/attempts/${S.ex.id}/${S.aid}.json`;
+  const payload = JSON.stringify({status:'locked', finishedAt:Date.now(), lastViolation:reason});
+  try{ fetch(u, {method:'PATCH', body:payload, keepalive:true, headers:{'Content-Type':'application/json'}}); }catch{}
+  fb(`attempts/${S.ex.id}/${S.aid}/violations`, 'POST', {t:Date.now(), r:reason}).catch(()=>{});
+  end('locked');
+}
+function arm(){
+  const V=r=>violation(r);
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)V('ترك الصفحة / تبديل التبويب')});
+  window.addEventListener('blur',()=>V('فقدان التركيز على نافذة الاختبار'));
+  window.addEventListener('pagehide',()=>V('إغلاق أو تحديث الصفحة'));
+  window.addEventListener('beforeunload',e=>{if(S&&!S.done){e.preventDefault();e.returnValue=''}});
+  document.addEventListener('fullscreenchange',()=>{if(S.fsOk&&!document.fullscreenElement)V('الخروج من وضع ملء الشاشة')});
+  ['contextmenu','copy','cut','paste','dragstart'].forEach(ev=>document.addEventListener(ev,e=>{if(S&&!S.done)e.preventDefault()}));
+  document.addEventListener('keyup',e=>{if(e.key==='PrintScreen'){try{navigator.clipboard.writeText('')}catch{}V('محاولة تصوير الشاشة')}});
+  document.addEventListener('keydown',e=>{
+    if(!S||S.done)return;const k=e.key.toLowerCase();
+    if(e.key==='PrintScreen'){try{navigator.clipboard.writeText('')}catch{}e.preventDefault();return V('محاولة تصوير الشاشة')}
+    if(e.metaKey&&e.shiftKey&&['3','4','5'].includes(k))return V('محاولة تصوير الشاشة');
+    if(e.key==='F12'||((e.ctrlKey||e.metaKey)&&e.shiftKey&&['i','j','c','s'].includes(k))||((e.ctrlKey||e.metaKey)&&['c','v','x','p','s','u','a','f'].includes(k))||(e.altKey&&k==='tab')||e.key==='Meta'||e.key==='OS'){e.preventDefault();if(e.key==='F12'||e.shiftKey)V('محاولة فتح أدوات المطوّر / لقطة')}
+  });
+}
+
+/* ================= المعلم ================= */
+function tAuth(mode='login'){
+  show(`<div style="max-width:440px;margin:6vh auto"><div class="card"><button class="btn" id="bk">→ رجوع</button><h2 class="center">👨‍🏫 بوابة المعلم</h2>
+  <div class="tabs"><button class="btn ${mode==='login'?'on':''}" id="t1" style="flex:1">دخول</button><button class="btn ${mode==='reg'?'on':''}" id="t2" style="flex:1">حساب جديد</button></div>
+  ${mode==='reg'?'<label>الاسم</label><input id="nm">':''}<label>البريد الإلكتروني</label><input id="em" type="email" style="direction:ltr"><label>كلمة المرور</label><input id="pw" type="password" style="direction:ltr">
+  <button class="btn pri" id="ok" style="width:100%;margin-top:18px">${mode==='login'?'دخول':'إنشاء الحساب'}</button></div></div>`);
+  $('#bk').onclick=home;$('#t1').onclick=()=>tAuth('login');$('#t2').onclick=()=>tAuth('reg');
+  $('#ok').onclick=async()=>{
+    try{
+      const email=$('#em').value.trim().toLowerCase(), pw=$('#pw').value;
+      if(!/^\S+@\S+\.\S+$/.test(email) || pw.length<6) throw new Error('أكمل البريد وكلمة المرور (6 أحرف على الأقل)');
+      const teachers = await fb('teachers') || {};
+      const h = await hashPw(pw);
+      if(mode==='reg'){
+        const name=$('#nm').value.trim();
+        if(!name) throw new Error('اكتب اسمك');
+        if(Object.values(teachers).some(t=>t && t.email===email)) throw new Error('هذا البريد مسجل من قبل');
+        const id = rid(6);
+        teacher = {id, name, email, hash:h};
+        await fb(`teachers/${id}`, 'PUT', teacher);
+      } else {
+        const found = Object.values(teachers).find(t=>t && t.email===email && t.hash===h);
+        if(!found) throw new Error('بيانات الدخول غير صحيحة');
+        teacher = found;
+      }
+      localStorage.setItem('t_user', JSON.stringify(teacher));
+      dash();
+    }catch(e){toast(e.message)}
+  };
+}
+
+async function dash(){
+  if(!teacher) return tAuth();
+  try{
+    const allExams = await fb('exams') || {};
+    const list = Object.values(allExams).filter(e=>e && e.owner===teacher.id).sort((a,b)=>(b.created||0)-(a.created||0));
+    show(`<div class="row between"><h1>📚 اختباراتي</h1><div class="row"><button class="btn pri" id="nw">＋ اختبار جديد</button><button class="btn" id="lo">خروج</button></div></div>
+    ${list.length?'':'<div class="card center mut">لا توجد اختبارات بعد. ابدأ بإنشاء أول اختبار.</div>'}
+    <div class="grid3">${list.map(e=>`<div class="card"><div class="row between"><h3>${esc(e.title)}</h3>${e.open?'<span class="badge b-ok">مفتوح</span>':'<span class="badge">مغلق</span>'}</div>
+    <p class="mut">${(e.questions||[]).length} سؤال • ${e.duration} دقيقة</p>
+    <div class="row"><button class="btn pri" data-l="${e.id}">▶ الجلسة</button><button class="btn" data-r="${e.id}">النتائج</button><button class="btn" data-e="${e.id}">تعديل</button><button class="btn danger" data-d="${e.id}">حذف</button></div></div>`).join('')}</div>`);
+    $('#nw').onclick=()=>builder();
+    $('#lo').onclick=()=>{teacher=null;localStorage.removeItem('t_user');home()};
+    app.querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>live(b.dataset.l));
+    app.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>results(b.dataset.r));
+    app.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>builder(b.dataset.e));
+    app.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{
+      const m=modal('<h3>حذف الاختبار ونتائجه؟</h3><div class="row"><button class="btn danger" id="y">حذف نهائي</button><button class="btn" id="n">إلغاء</button></div>');
+      m.querySelector('#n').onclick=()=>m.remove();
+      m.querySelector('#y').onclick=async()=>{await fb(`exams/${b.dataset.d}`,'DELETE');await fb(`attempts/${b.dataset.d}`,'DELETE');m.remove();dash()};
+    });
+  }catch(e){toast(e.message)}
+}
+
+/* ---------- منشئ الاختبار ---------- */
+const QT={mcq:'اختيار من متعدد',multi:'متعدد الإجابات',tf:'صح / خطأ',short:'إجابة قصيرة',essay:'مقالي'};
+async function builder(id){
+  let M = id ? await fb(`exams/${id}`) : {title:'',desc:'',duration:30,shuffleQ:true,shuffleO:true,allowBack:false,showScore:false,rotate:45,questions:[]};
+  M.questions = M.questions || [];
+  const mk=t=>({id:rid(4),type:t,text:'',points:1,...(t==='mcq'?{options:['',''],correct:0}:t==='multi'?{options:['',''],correct:[]}:t==='tf'?{correct:0}:t==='short'?{correct:[]}:{})});
+  const draw=()=>{
+    show(`<div class="row between"><h1>${id?'✏️ تعديل الاختبار':'🆕 اختبار جديد'}</h1><button class="btn" id="bk">→ رجوع</button></div>
+    <div class="card"><label>عنوان الاختبار</label><input data-f="title" value="${esc(M.title)}"><label>تعليمات (اختياري)</label><textarea data-f="desc" style="min-height:60px">${esc(M.desc)}</textarea>
+    <div class="grid3"><div><label>مدة الاختبار (دقيقة)</label><input type="number" min="1" data-f="duration" value="${M.duration}"></div>
+    <div><label>تغيّر كود الدخول كل</label><select data-f="rotate">${[[0,'ثابت (يغيّره المعلم يدوياً)'],[30,'30 ثانية'],[45,'45 ثانية'],[60,'دقيقة'],[120,'دقيقتين']].map(o=>`<option value="${o[0]}" ${+M.rotate===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div></div>
+    <div class="row" style="margin-top:12px">${[['shuffleQ','ترتيب عشوائي للأسئلة'],['shuffleO','ترتيب عشوائي للخيارات'],['allowBack','السماح بالرجوع للأسئلة السابقة'],['showScore','إظهار الدرجة للطالب بعد التسليم']].map(o=>`<label style="margin:0;display:flex;gap:6px;align-items:center;color:var(--tx)"><input type="checkbox" data-f="${o[0]}" ${M[o[0]]?'checked':''}>${o[1]}</label>`).join('')}</div></div>
+    ${M.questions.map((q,i)=>qCard(q,i)).join('')}
+    <div class="card"><b>➕ إضافة سؤال:</b><div class="row" style="margin-top:10px">${Object.entries(QT).map(([k,v])=>`<button class="btn" data-act="add:${k}">${v}</button>`).join('')}</div></div>
+    <button class="btn pri" id="sv" style="width:100%;font-size:18px">💾 حفظ الاختبار</button>`);
+    $('#bk').onclick=dash;
+    $('#sv').onclick=async()=>{
+      try{
+        if(!M.title.trim()) throw new Error('اكتب عنوان الاختبار');
+        if(!M.questions.length) throw new Error('أضف سؤالاً واحداً على الأقل');
+        const eid = id || rid(6);
+        const data = {...M, id:eid, owner:teacher.id, open:M.open||false, created:M.created||Date.now()};
+        await fb(`exams/${eid}`, 'PUT', data);
+        toast('تم الحفظ');dash();
+      }catch(e){toast(e.message)}
+    };
+  };
+  const qCard=(q,i)=>{
+    let ed='';
+    if(q.type==='mcq'||q.type==='multi')ed=q.options.map((o,k)=>`<div class="row" style="margin:6px 0;flex-wrap:nowrap"><input type="${q.type==='mcq'?'radio':'checkbox'}" name="c${i}" data-q="${i}" data-f="corr" data-o="${k}" ${(q.type==='mcq'?q.correct===k:(q.correct||[]).includes(k))?'checked':''} title="الإجابة الصحيحة"><input data-q="${i}" data-f="opt" data-o="${k}" value="${esc(o)}" placeholder="الخيار ${k+1}"><button class="btn danger" data-act="delopt:${i}:${k}" ${q.options.length<=2?'disabled':''}>✕</button></div>`).join('')+`<button class="btn" data-act="addopt:${i}">＋ خيار</button><small class="mut"> حدّد الدائرة/المربع بجوار الإجابة الصحيحة</small>`;
+    else if(q.type==='tf')ed=`<div class="row">${['صح','خطأ'].map((t,k)=>`<label style="margin:0;display:flex;gap:6px;color:var(--tx)"><input type="radio" name="c${i}" data-q="${i}" data-f="tf" data-o="${k}" ${q.correct===k?'checked':''}>${t} هي الصحيحة</label>`).join('')}</div>`;
+    else if(q.type==='short')ed=`<label>الإجابات المقبولة (كل إجابة في سطر)</label><textarea data-q="${i}" data-f="acc">${esc((q.correct||[]).join('\n'))}</textarea>`;
+    else ed='<p class="mut">سؤال مقالي: يُصحَّح يدوياً من صفحة النتائج.</p>';
+    return `<div class="qc"><div class="row between"><span class="badge b-info">${i+1}. ${QT[q.type]}</span><div class="row"><button class="btn" data-act="up:${i}">↑</button><button class="btn" data-act="dn:${i}">↓</button><button class="btn danger" data-act="del:${i}">حذف</button></div></div>
+    <label>نص السؤال</label><textarea data-q="${i}" data-f="text">${esc(q.text)}</textarea><label>الدرجة</label><input type="number" min="0" step="0.5" style="max-width:120px" data-q="${i}" data-f="pts" value="${q.points}">${ed}</div>`;
+  };
+  draw();
+  const upd=e=>{
+    const t=e.target,f=t.dataset.f;if(!f)return;const q=M.questions[t.dataset.q],o=+t.dataset.o;
+    if(!q){M[f]=t.type==='checkbox'?t.checked:(f==='title'||f==='desc'?t.value:+t.value);return}
+    if(f==='text')q.text=t.value;else if(f==='pts')q.points=+t.value;else if(f==='opt')q.options[o]=t.value;
+    else if(f==='corr'){if(q.type==='mcq')q.correct=o;else q.correct=t.checked?[...new Set([...(q.correct||[]),o])]:(q.correct||[]).filter(x=>x!==o)}
+    else if(f==='tf')q.correct=o;else if(f==='acc')q.correct=t.value.split('\n').map(s=>s.trim()).filter(Boolean);
+  };
+  app.oninput=upd;app.onchange=upd;
+  app.onclick=e=>{
+    const b=e.target.closest('[data-act]');if(!b)return;const [a,x,y]=b.dataset.act.split(':'),i=+x;
+    if(a==='add')M.questions.push(mk(x));
+    else if(a==='del')M.questions.splice(i,1);
+    else if(a==='up'&&i>0)[M.questions[i-1],M.questions[i]]=[M.questions[i],M.questions[i-1]];
+    else if(a==='dn'&&i<M.questions.length-1)[M.questions[i+1],M.questions[i]]=[M.questions[i],M.questions[i+1]];
+    else if(a==='addopt')M.questions[i].options.push('');
+    else if(a==='delopt'){const q=M.questions[i],k=+y;q.options.splice(k,1);if(q.type==='mcq'){if(q.correct===k)q.correct=0;else if(q.correct>k)q.correct--}else q.correct=(q.correct||[]).filter(c=>c!==k).map(c=>c>k?c-1:c)}
+    else return;
+    const sy=scrollY;draw();scrollTo(0,sy);
+  };
+}
+
+/* ---------- الجلسة المباشرة (الكود + QR) ---------- */
+async function live(id){
+  let ex = await fb(`exams/${id}`), lastCode=null;
+  show(`<div class="row between"><h2>${esc(ex.title)}</h2><button class="btn" id="bk">→ رجوع</button></div>
+  <div class="card center" id="box"></div><div class="card"><h3>الطلاب المتصلون <span id="cnt" class="badge"></span></h3><div id="stu"></div></div>`);
+  $('#bk').onclick=dash;
+
+  const rotateNow = async () => {
+    const c = genCode(), now = Date.now();
+    await fb(`exams/${id}`, 'PATCH', {open:true, prev:ex.code||null, prevUntil:now+12000, code:c, codeAt:now});
+  };
+
+  const sync = async () => {
+    ex = await fb(`exams/${id}`);
+    const now = Date.now();
+    if(ex.open && ex.rotate > 0 && now - (ex.codeAt||0) >= ex.rotate*1000){
+      await rotateNow();
+      ex = await fb(`exams/${id}`);
+    }
+    const attsObj = await fb(`attempts/${id}`) || {};
+    const students = Object.values(attsObj).filter(Boolean).map(a=>{
+      if(a.status==='active' && now > a.deadline+3000) a.status='expired';
+      return a;
+    });
+
+    const box=$('#box');if(!box)return;
+    if(!ex.open){
+      lastCode=null;
+      box.innerHTML=`<p class="mut">الاختبار مغلق. افتحه ليظهر كود الدخول لطلابك.</p><button class="btn pri" id="op" style="font-size:20px">🔓 فتح الاختبار</button>`;
+      $('#op').onclick=async()=>{await rotateNow();sync();};
+    } else {
+      const baseUrl = location.href.split('?')[0];
+      const url = baseUrl + '?code=' + ex.code;
+      if(ex.code !== lastCode){
+        lastCode = ex.code;
+        box.innerHTML=`<p class="mut">كود الدخول — اعرضه على الشاشة${ex.rotate?` (يتغير كل ${ex.rotate} ثانية)`:''}</p><div class="codebox" id="cd">${ex.code}</div>
+        ${ex.rotate?'<div class="bar" style="max-width:420px;margin:8px auto"><div id="rb"></div></div>':''}
+        <div class="row" style="justify-content:center;margin:14px 0"><div class="qrbox" id="qr"></div></div>
+        <p class="mut" style="direction:ltr;font-size:13px">${esc(url)}</p>
+        ${location.protocol==='file:'?'<p style="color:var(--warn);font-size:13px">⚠️ أنت تفتح الملف من جهازك مباشرة (file://)؛ ارفعه على Netlify Drop أو GitHub Pages ليتمكن الطلاب من فتح الرابط.</p>':''}
+        <div class="row" style="justify-content:center"><button class="btn" id="rt">🔄 تغيير الكود الآن</button><button class="btn danger" id="cl">🔒 إغلاق الدخول</button></div>`;
+        try{new QRCode($('#qr'),{text:url,width:220,height:220,correctLevel:QRCode.CorrectLevel.M})}catch{$('#qr').textContent='تعذر تحميل مكتبة QR'}
+        $('#rt').onclick=async()=>{await rotateNow();sync();};
+        $('#cl').onclick=async()=>{await fb(`exams/${id}`,'PATCH',{open:false,code:null,prev:null});sync();};
+      }
+      const rb=$('#rb');
+      if(rb && ex.rotate){
+        const rem = Math.max(0, Math.ceil(((ex.codeAt||now) + ex.rotate*1000 - now)/1000));
+        rb.style.width=(rem/ex.rotate*100)+'%';
+      }
+    }
+    $('#cnt').textContent=students.length;
+    $('#stu').innerHTML=students.length?`<table><tr><th>الاسم</th><th>الرقم الجامعي</th><th>الحالة</th></tr>${students.map(s=>`<tr><td>${esc(s.name)}</td><td>${esc(s.sid)}</td><td>${badge(s.status)}</td></tr>`).join('')}</table>`:'<p class="mut">لم يدخل أحد بعد.</p>';
+  };
+  await sync();
+  timers.push(setInterval(()=>sync().catch(()=>{}), 2500));
+}
+
+/* ---------- النتائج ---------- */
+async function results(id){
+  const [ex, attsObj] = await Promise.all([fb(`exams/${id}`), fb(`attempts/${id}`)]);
+  const rs = Object.values(attsObj||{}).filter(Boolean).sort((a,b)=>(a.startedAt||0)-(b.startedAt||0)).map(a=>{
+    if(a.status==='active' && Date.now() > a.deadline+3000) a.status='expired';
+    const viols = a.violations ? Object.values(a.violations) : [];
+    return {...a, viols, ...gradeExam(ex, a)};
+  });
+  show(`<div class="row between"><h2>📊 نتائج: ${esc(ex.title)}</h2><div class="row"><button class="btn" id="csv">⬇ تصدير Excel/CSV</button><button class="btn" id="bk">→ رجوع</button></div></div>
+  <div class="card" style="overflow:auto">${rs.length?`<table><tr><th>الاسم</th><th>الرقم</th><th>الحالة</th><th>الدرجة</th><th>المخالفات</th><th></th></tr>${rs.map(r=>`<tr><td>${esc(r.name)}</td><td>${esc(r.sid)}</td><td>${badge(r.status)}</td><td><b>${r.score}</b> / ${r.total}${r.pending?' <span class="badge b-warn">مقالي</span>':''}</td><td class="mut" style="font-size:13px">${r.viols.map(v=>esc(v.r)).join('، ')||'—'}</td>
+  <td><div class="row"><button class="btn" data-v="${r.id}">تفاصيل</button>${r.status==='locked'?`<button class="btn" data-u="${r.id}">السماح بالعودة</button>`:''}</div></td></tr>`).join('')}</table>`:'<p class="mut center">لا توجد محاولات بعد.</p>'}</div>`);
+  $('#bk').onclick=dash;
+  $('#csv').onclick=()=>{const rows=[['الاسم','الرقم الجامعي','الحالة','الدرجة','من','المخالفات'],...rs.map(r=>[r.name,r.sid,stLabel[r.status][0],r.score,r.total,r.viols.map(v=>v.r).join(' | ')])];
+    const c='\ufeff'+rows.map(r=>r.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([c],{type:'text/csv'}));a.download='results.csv';a.click()};
+  app.querySelectorAll('[data-u]').forEach(b=>b.onclick=async()=>{await fb(`attempts/${id}/${b.dataset.u}/status`,'PUT','unlocked');toast('يمكن للطالب الدخول مرة أخرى بنفس الرقم الجامعي والكود الحالي');results(id)});
+  app.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>detail(b.dataset.v, ex));
+}
+async function detail(aid, ex){
+  const L = await fb(`attempts/${ex.id}/${aid}`);
+  const fa=(q,a)=>a==null||a===''?'<i class="mut">لم يجب</i>':q.type==='tf'?(a==0?'صح':'خطأ'):q.type==='mcq'?esc(q.options[a]):q.type==='multi'?esc((a||[]).map(i=>q.options[i]).join('، ')):esc(a);
+  const ca=q=>q.type==='tf'?(q.correct==0?'صح':'خطأ'):q.type==='mcq'?esc(q.options[q.correct]):q.type==='multi'?esc((q.correct||[]).map(i=>q.options[i]).join('، ')):q.type==='short'?esc((q.correct||[]).join(' / ')):'—';
+  const m=modal(`<h3>${esc(L.name)} <small class="mut">(${esc(L.sid)})</small></h3>${(ex.questions||[]).map((q,i)=>{const s=scoreQ(q,(L.answers||{})[q.id],L);return `<div class="qc"><b>${i+1}. ${esc(q.text)}</b><p>إجابته: ${fa(q,(L.answers||{})[q.id])}</p>${q.type==='essay'?`<div class="row"><span>الدرجة:</span><input type="number" min="0" max="${q.points}" step="0.5" style="max-width:100px" data-q="${q.id}" value="${s??''}"> / ${q.points}<button class="btn" data-g="${q.id}">حفظ</button></div>`:`<p class="mut">الصحيح: ${ca(q)} — <span class="${s?'':'danger'}">${s} / ${q.points}</span></p>`}</div>`}).join('')}<button class="btn" id="x">إغلاق</button>`);
+  m.querySelector('#x').onclick=()=>{m.remove();results(ex.id)};
+  m.querySelectorAll('[data-g]').forEach(b=>b.onclick=async()=>{
+    const val = Math.min(Math.max(0, Number(m.querySelector(`input[data-q="${b.dataset.g}"]`).value)||0), 1000);
+    await fb(`attempts/${ex.id}/${aid}/manual/${b.dataset.g}`, 'PUT', val);
+    toast('تم الحفظ');
+  });
+}
+
+/* ---------- البداية ---------- */
+const pc=new URLSearchParams(location.search).get('code');
+pc?sJoin(pc):home();
+</script>
+</body>
+</html>
