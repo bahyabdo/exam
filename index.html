@@ -102,7 +102,7 @@ const LOGO_SVG = `<svg width="42" height="42" viewBox="0 0 48 48" fill="none">
 
 const app = document.getElementById('app');
 const $ = s => document.querySelector(s);
-const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&","<":"<",">":">",'"':""","'":"'"}[c]));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
 const rid = (n=6) => Array.from(crypto.getRandomValues(new Uint8Array(n)), b => b.toString(36)[0] || 'x').join('').slice(0,n).toUpperCase();
 const shuffle = a => { a=[...a]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]} return a; };
 const fmtTime = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
