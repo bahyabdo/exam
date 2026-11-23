@@ -634,20 +634,33 @@ async function violation(reason){
 function arm(){
   const V=r=>violation(r);
   const blurOn=()=>{if(S&&!S.done)app.style.filter='blur(18px)'};
-  S.armAt=Date.now()+600;
-  let initW=window.innerWidth,initH=window.innerHeight;
+  const blurOff=()=>{if(S&&!S.done&&!S.locked)app.style.filter='none'};
+  S.armAt=Date.now()+2500;
+  let initW=window.innerWidth,initH=window.innerHeight,blurT=null;
 
-  document.addEventListener('visibilitychange',()=>{if(document.hidden){blurOn();V('ترك الصفحة / تبديل التبويب')}});
-  window.addEventListener('blur',()=>{blurOn();V('فقدان التركيز / محاولة تصوير أو فتح قائمة')});
-  document.addEventListener('mouseleave',()=>{blurOn();V('خروج المؤشر من نافذة الاختبار')});
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden){blurOn();V('ترك الصفحة / تبديل التبويب')}
+  });
+  window.addEventListener('blur',()=>{
+    if(!S||S.done||S.locked||Date.now()<S.armAt)return;
+    blurOn();
+    clearTimeout(blurT);
+    blurT=setTimeout(()=>{
+      if(document.hidden||!document.hasFocus()) V('فقدان التركيز / فتح نافذة خارجية');
+      else blurOff();
+    },1500);
+  });
+  window.addEventListener('focus',()=>{clearTimeout(blurT);blurOff()});
   window.addEventListener('resize',()=>{
-    if(S&&!S.done&&(Math.abs(window.innerWidth-initW)>120||Math.abs(window.innerHeight-initH)>160)){
+    if(S&&!S.done&&Date.now()>S.armAt&&(Math.abs(window.innerWidth-initW)>140||Math.abs(window.innerHeight-initH)>180)){
       blurOn();V('محاولة تقسيم الشاشة أو تغيير حجم النافذة');
     }
   });
   window.addEventListener('pagehide',()=>V('إغلاق أو تحديث الصفحة'));
   window.addEventListener('beforeunload',e=>{if(S&&!S.done){e.preventDefault();e.returnValue=''}});
-  document.addEventListener('fullscreenchange',()=>{if(S.fsOk&&!document.fullscreenElement){blurOn();V('الخروج من وضع ملء الشاشة')}});
+  document.addEventListener('fullscreenchange',()=>{
+    if(S.fsOk&&!document.fullscreenElement){blurOn();V('الخروج من وضع ملء الشاشة')}
+  });
   ['contextmenu','copy','cut','paste','dragstart','selectstart'].forEach(ev=>document.addEventListener(ev,e=>{if(S&&!S.done)e.preventDefault()}));
   document.addEventListener('keyup',e=>{
     if(e.key==='PrintScreen'||e.keyCode===44){blurOn();try{navigator.clipboard.writeText('')}catch{}V('محاولة تصوير الشاشة')}
