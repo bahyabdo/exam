@@ -8,107 +8,89 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <style>
 :root{
-  --bg1:#eef6ff;--bg2:#f8fafc;--card:#ffffff;--card2:#f1f5f9;--nav:rgba(255,255,255,.88);
-  --bd:#e2e8f0;--tx:#0f172a;--mut:#64748b;--inp:#f8fafc;--inp-bd:#cbd5e1;
+  --bg1:#eef6ff;--bg2:#f8fafc;--card:#ffffff;--card2:#f1f5f9;
+  --bd:#e2e8f0;--tx:#0f172a;--mut:#64748b;
   --a:#4f46e5;--b:#0ea5e9;--c:#8b5cf6;
   --ok:#10b981;--bad:#ef4444;--warn:#f59e0b;--info:#3b82f6;
 }
-body.dark{
-  --bg1:#0b1120;--bg2:#0f172a;--card:#1e293b;--card2:#0f172a;--nav:rgba(30,41,59,.88);
-  --bd:#334155;--tx:#f1f5f9;--mut:#94a3b8;--inp:#0f172a;--inp-bd:#475569;
-}
 *{box-sizing:border-box;margin:0;padding:0}
 body{
-  font-family:'Cairo',system-ui,sans-serif;color:var(--tx);min-height:100vh;padding:16px;
-  transition:background .3s,color .3s;
+  font-family:'Cairo',system-ui,sans-serif;color:var(--tx);min-height:100vh;padding:18px;
   background:radial-gradient(circle at 12% 12%,rgba(14,165,233,.16),transparent 42%),
              radial-gradient(circle at 88% 18%,rgba(139,92,246,.14),transparent 42%),
              radial-gradient(circle at 50% 90%,rgba(16,185,129,.12),transparent 45%),
              linear-gradient(135deg,var(--bg1),var(--bg2));
 }
-#app{max-width:1100px;margin:0 auto;transition:filter .15s ease}
+#app{max-width:1080px;margin:0 auto;transition:filter .15s ease}
 .brand-bar{
-  position:sticky;top:10px;z-index:35;
   display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
-  padding:12px 20px;margin-bottom:20px;background:var(--nav);
-  border:1px solid var(--bd);border-radius:20px;backdrop-filter:blur(16px);
-  box-shadow:0 10px 30px rgba(15,23,42,.08);
+  padding:14px 20px;margin-bottom:20px;background:rgba(255,255,255,.94);
+  border:1px solid var(--bd);border-radius:20px;backdrop-filter:blur(12px);
+  box-shadow:0 8px 25px rgba(15,23,42,.05);
 }
 .brand{display:flex;align-items:center;gap:12px}
 .brand-title{font-size:23px;font-weight:900;background:linear-gradient(90deg,#4f46e5,#0ea5e9,#10b981);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:.4px}
 .brand-sub{font-size:12px;color:var(--mut);margin-top:-3px;font-weight:600}
-.nav-tabs{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
-.nav-pill{padding:8px 13px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid var(--bd);background:var(--card2);color:var(--tx);transition:.2s}
-.nav-pill:hover,.nav-pill.active{background:linear-gradient(135deg,var(--a),var(--b));color:#fff;border-color:transparent;box-shadow:0 4px 12px rgba(79,70,229,.25)}
-.nav-pill.root-pill{background:linear-gradient(135deg,#0f172a,#334155);color:#fbbf24;border-color:#475569}
-.card{background:var(--card);border:1px solid var(--bd);border-radius:22px;padding:24px;margin-bottom:16px;box-shadow:0 10px 30px rgba(15,23,42,.05);transition:background .3s,border-color .3s}
-.card-soft{background:linear-gradient(135deg,var(--card),var(--card2));border:1px solid var(--bd);border-radius:18px;padding:18px;transition:.25s}
-.hero-portal{cursor:pointer;padding:28px;position:relative;overflow:hidden}
-.hero-portal:hover{transform:translateY(-6px);box-shadow:0 18px 35px rgba(79,70,229,.18);border-color:#38bdf8}
-.hero-portal .ico{font-size:46px;margin-bottom:10px;display:inline-block;transition:transform .25s}
-.hero-portal:hover .ico{transform:scale(1.12) rotate(-4deg)}
-h1{font-size:25px;font-weight:900}h2{font-size:19px;font-weight:800;margin-bottom:12px}h3{font-size:16px;font-weight:700;margin-bottom:8px}
+.nav-tabs{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.nav-pill{padding:8px 14px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid var(--bd);background:#f8fafc;color:var(--tx);transition:.2s}
+.nav-pill:hover,.nav-pill.active{background:linear-gradient(135deg,var(--a),var(--b));color:#fff;border-color:transparent;box-shadow:0 4px 12px rgba(79,70,229,.22)}
+.nav-pill.root-pill{background:linear-gradient(135deg,#0f172a,#334155);color:#fbbf24;border-color:#0f172a}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:22px;padding:24px;margin-bottom:16px;box-shadow:0 10px 30px rgba(15,23,42,.05)}
+.card-soft{background:linear-gradient(135deg,#f8fafc,#eef6ff);border:1px solid #dbeafe;border-radius:18px;padding:18px;transition:.2s}
+.card-soft:hover{transform:translateY(-2px);box-shadow:0 12px 24px rgba(14,165,233,.12);border-color:#93c5fd}
+h1{font-size:25px;font-weight:900;color:#0f172a}h2{font-size:19px;font-weight:800;margin-bottom:12px;color:#1e293b}h3{font-size:16px;font-weight:700;margin-bottom:8px}
 .mut{color:var(--mut);font-size:14px}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.between{justify-content:space-between}
-.btn{border:1px solid var(--bd);background:var(--card2);color:var(--tx);padding:10px 16px;border-radius:12px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;justify-content:center;gap:7px}
-.btn:hover{filter:brightness(.95);transform:translateY(-1px)}
+.btn{border:1px solid var(--bd);background:#f8fafc;color:var(--tx);padding:10px 18px;border-radius:12px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.btn:hover{background:#e2e8f0;transform:translateY(-1px)}
 .btn.pri{background:linear-gradient(135deg,var(--a),var(--b));border:none;color:#fff;box-shadow:0 6px 18px rgba(79,70,229,.28)}
-.btn.pri:hover{filter:brightness(1.07)}
+.btn.pri:hover{filter:brightness(1.06)}
 .btn.google{background:#ffffff;color:#1e293b;border:1px solid #cbd5e1;font-weight:800;width:100%;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.btn.google:hover{background:#f8fafc;border-color:#94a3b8}
 .btn.ok{background:var(--ok);border:none;color:#fff;box-shadow:0 4px 12px rgba(16,185,129,.25)}
 .btn.bad{background:var(--bad);border:none;color:#fff;box-shadow:0 4px 12px rgba(239,68,68,.25)}
 .btn.warn{background:var(--warn);border:none;color:#fff}
 .btn.sm{padding:6px 11px;font-size:12.5px;border-radius:9px}
-input,textarea,select{width:100%;background:var(--inp);border:1px solid var(--inp-bd);color:var(--tx);padding:11px 14px;border-radius:12px;font-family:inherit;font-size:15px;margin-top:5px;transition:.2s}
-input:focus,textarea:focus,select:focus{outline:none;border-color:var(--b);box-shadow:0 0 0 3px rgba(14,165,233,.2)}
-label{display:block;font-size:13px;color:var(--mut);margin-top:12px;font-weight:700}
+input,textarea,select{width:100%;background:#f8fafc;border:1px solid #cbd5e1;color:var(--tx);padding:11px 14px;border-radius:12px;font-family:inherit;font-size:15px;margin-top:5px;transition:.2s}
+input:focus,textarea:focus,select:focus{outline:none;background:#fff;border-color:var(--b);box-shadow:0 0 0 3px rgba(14,165,233,.18)}
+label{display:block;font-size:13px;color:#475569;margin-top:12px;font-weight:700}
 .badge{padding:4px 11px;border-radius:99px;font-size:12px;font-weight:800;display:inline-block}
 .b-ok{background:#dcfce7;color:#15803d}.b-bad{background:#fee2e2;color:#b91c1c}.b-warn{background:#fef3c7;color:#b45309}.b-info{background:#e0f2fe;color:#0369a1}.b-purp{background:#ede9fe;color:#6d28d9}
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
-.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
 .grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
-.stat-box{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:16px;text-align:center;box-shadow:0 4px 12px rgba(15,23,42,.03)}
+.stat-box{background:linear-gradient(180deg,#ffffff,#f8fafc);border:1px solid var(--bd);border-radius:16px;padding:16px;text-align:center;box-shadow:0 4px 12px rgba(15,23,42,.03)}
 .stat-val{font-size:25px;font-weight:900;margin:4px 0;background:linear-gradient(90deg,#4f46e5,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.tabs{display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid var(--bd);padding-bottom:10px;flex-wrap:wrap}
+.tabs{display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid var(--bd);padding-bottom:10px}
 .tabs .btn.on{background:linear-gradient(135deg,var(--a),var(--b));border:none;color:#fff}
-.opt{display:flex;gap:12px;align-items:center;width:100%;text-align:right;font-family:inherit;font-size:16px;color:var(--tx);cursor:pointer;background:var(--card2);border:1px solid var(--bd);padding:14px;border-radius:14px;margin:8px 0;transition:.15s}
-.opt:hover{border-color:var(--b)}.opt.sel{border-color:var(--b);background:rgba(14,165,233,.14);font-weight:700}
+.opt{display:flex;gap:12px;align-items:center;width:100%;text-align:right;font-family:inherit;font-size:16px;color:var(--tx);cursor:pointer;background:#f8fafc;border:1px solid var(--bd);padding:14px;border-radius:14px;margin:8px 0;transition:.15s}
+.opt:hover{border-color:var(--b);background:#f0f9ff}.opt.sel{border-color:var(--b);background:#e0f2fe;font-weight:700}
 .opt i{font-style:normal;width:28px;height:28px;border-radius:8px;border:2px solid #94a3b8;display:inline-flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
 .opt.sel i{background:var(--b);border-color:var(--b);color:#fff;font-weight:800}
-.bar{height:9px;border-radius:9px;background:var(--bd);overflow:hidden}.bar>div{height:100%;background:linear-gradient(90deg,var(--a),var(--b));transition:width .4s}
-.qc{border:1px solid var(--bd);border-radius:16px;padding:16px;margin:12px 0;background:var(--card2)}
+.bar{height:9px;border-radius:9px;background:#e2e8f0;overflow:hidden}.bar>div{height:100%;background:linear-gradient(90deg,var(--a),var(--b));transition:width .4s}
+.qc{border:1px solid var(--bd);border-radius:16px;padding:16px;margin:12px 0;background:#f8fafc}
 .codebox{font-size:clamp(48px,11vw,92px);font-weight:900;letter-spacing:.18em;text-align:center;direction:ltr;background:linear-gradient(90deg,#4f46e5,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .qrbox{background:#fff;padding:14px;border-radius:18px;display:inline-block;border:2px solid #e0f2fe;box-shadow:0 8px 20px rgba(14,165,233,.12)}
 .table-wrap{overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:11px 10px;border-bottom:1px solid var(--bd);text-align:right;white-space:nowrap}th{color:var(--mut);font-weight:800;background:var(--card2)}
-.chart-wrap{display:flex;align-items:flex-end;gap:12px;height:185px;padding:24px 14px 10px;background:var(--card2);border-radius:16px;border:1px solid var(--bd);overflow-x:auto;margin-top:12px}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:11px 10px;border-bottom:1px solid var(--bd);text-align:right;white-space:nowrap}th{color:#475569;font-weight:800;background:#f1f5f9}
+.chart-wrap{display:flex;align-items:flex-end;gap:12px;height:185px;padding:24px 14px 10px;background:#f8fafc;border-radius:16px;border:1px solid var(--bd);overflow-x:auto;margin-top:12px}
 .chart-col{flex:1;min-width:44px;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end}
 .chart-bar{width:100%;max-width:42px;background:linear-gradient(180deg,#0ea5e9,#4f46e5);border-radius:8px 8px 0 0;transition:height .5s;min-height:6px;position:relative}
-.chart-cnt{font-size:12px;font-weight:800;color:#0ea5e9;margin-bottom:4px}
-.chart-lbl{font-size:12px;color:var(--mut);margin-top:6px;font-weight:700}
-.modal{position:fixed;inset:0;background:rgba(15,23,42,.6);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:16px;z-index:60}
-.modal>div{background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:22px;padding:24px;max-width:700px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 20px 45px rgba(15,23,42,.25)}
-.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:12px 24px;border-radius:14px;z-index:99;box-shadow:0 10px 30px rgba(15,23,42,.3);font-weight:700;max-width:92vw;text-align:center}
-.timer-ring{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;direction:ltr;position:relative}
-.timer-ring span{background:var(--card);width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center}
-.timer-ring.low{animation:bl 1s infinite}@keyframes bl{50%{opacity:.5}}
-.q-nav{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
-.q-dot{width:32px;height:32px;border-radius:9px;border:1px solid var(--bd);background:var(--card2);color:var(--tx);font-weight:800;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:.15s}
-.q-dot.ans{background:#dcfce7;color:#15803d;border-color:#86efac}
-.q-dot.cur{background:linear-gradient(135deg,var(--a),var(--b));color:#fff;border-color:transparent;box-shadow:0 0 0 3px rgba(14,165,233,.25)}
+.chart-cnt{font-size:12px;font-weight:800;color:#4f46e5;margin-bottom:4px}
+.chart-lbl{font-size:12px;color:#475569;margin-top:6px;font-weight:700}
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.modal>div{background:#ffffff;border:1px solid var(--bd);border-radius:22px;padding:24px;max-width:680px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 20px 45px rgba(15,23,42,.18)}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:12px 24px;border-radius:14px;z-index:99;box-shadow:0 10px 30px rgba(15,23,42,.25);font-weight:700;max-width:92vw;text-align:center}
+.timer{font-weight:900;font-size:22px;direction:ltr;color:#4f46e5}.timer.low{color:var(--bad);animation:bl 1s infinite}@keyframes bl{50%{opacity:.4}}
 .center{text-align:center}.big{font-size:56px}
 .divider{display:flex;align-items:center;text-align:center;color:var(--mut);font-size:13px;margin:16px 0}.divider::before,.divider::after{content:'';flex:1;border-bottom:1px solid var(--bd)}.divider:not(:empty)::before{margin-left:10px}.divider:not(:empty)::after{margin-right:10px}
-.creator-card{background:linear-gradient(135deg,rgba(79,70,229,.08),rgba(14,165,233,.08),rgba(16,185,129,.08));border:2px solid #93c5fd;border-radius:24px;padding:32px 24px;text-align:center;box-shadow:0 14px 35px rgba(79,70,229,.1)}
-.avatar-ring{display:inline-block;padding:5px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#0ea5e9,#10b981);margin-bottom:14px;box-shadow:0 10px 25px rgba(79,70,229,.25)}
-.creator-photo{width:150px;height:150px;border-radius:50%;object-fit:cover;object-position:center 15%;display:block;border:3px solid #fff}
+.creator-card{background:linear-gradient(135deg,#eef2ff,#e0f2fe,#ecfdf5);border:2px solid #bfdbfe;border-radius:24px;padding:32px 24px;text-align:center;box-shadow:0 14px 35px rgba(79,70,229,.1)}
+.creator-photo{width:155px;height:155px;border-radius:50%;object-fit:cover;object-position:center 15%;border:4px solid #ffffff;box-shadow:0 10px 25px rgba(79,70,229,.25);margin-bottom:14px;background:#e0f2fe}
 .footer-bar{text-align:center;padding:14px;margin-top:22px;font-size:13px;color:var(--mut);font-weight:700}
-.wl-box{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.35);border-radius:14px;padding:14px;margin-top:12px}
-.step-num{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--b));color:#fff;font-weight:900;display:inline-flex;align-items:center;justify-content:center;margin-bottom:8px}
+.wl-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:14px;padding:14px;margin-top:12px}
 body.exam,body.exam *{-webkit-user-select:none;user-select:none}body.exam input,body.exam textarea{-webkit-user-select:text;user-select:text}
 #wm{position:fixed;inset:0;pointer-events:none;z-index:40}
 @media print{body{display:none!important}}
@@ -130,15 +112,9 @@ const FIREBASE_URL = firebaseConfig.databaseURL;
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 
+// البريد الرسمي لمالك المنصة (الروت الوحيد)
 const ROOT_EMAIL = "bahyabdo25@gmail.com";
-const FIVE_MONTHS_MS = 150 * 24 * 60 * 60 * 1000;
-
-if(localStorage.getItem('itqan_dark')==='1') document.body.classList.add('dark');
-function toggleDark(){
-  document.body.classList.toggle('dark');
-  localStorage.setItem('itqan_dark', document.body.classList.contains('dark')?'1':'0');
-  const b = $('#dkBtn'); if(b) b.textContent = document.body.classList.contains('dark')?'☀️':'🌙';
-}
+const FIVE_MONTHS_MS = 150 * 24 * 60 * 60 * 1000; // 5 أشهر
 
 const LOGO_SVG = `<svg width="44" height="44" viewBox="0 0 48 48" fill="none">
   <defs><linearGradient id="itqG" x1="0" y1="0" x2="48" y2="48"><stop offset="0%" stop-color="#4f46e5"/><stop offset="50%" stop-color="#0ea5e9"/><stop offset="100%" stop-color="#10b981"/></linearGradient></defs>
@@ -161,7 +137,6 @@ let teacher = JSON.parse(localStorage.getItem('itqan_teacher')||'null');
 const isRoot = () => teacher && String(teacher.email||'').toLowerCase() === ROOT_EMAIL;
 
 function headerHtml(activeTab='home'){
-  const isDk = document.body.classList.contains('dark');
   return `<div class="brand-bar">
     <div class="brand" style="cursor:pointer" onclick="home()">
       ${LOGO_SVG}
@@ -172,8 +147,7 @@ function headerHtml(activeTab='home'){
       <button class="nav-pill ${activeTab==='teacher'?'active':''}" onclick="teacher?dash():tAuth()">👨‍🏫 بوابة المعلم</button>
       <button class="nav-pill ${activeTab==='student'?'active':''}" onclick="sJoin()">🎓 بوابة الطالب</button>
       <button class="nav-pill ${activeTab==='creator'?'active':''}" onclick="aboutCreator()">✨ منشئ المنصة</button>
-      ${isRoot()?`<button class="nav-pill root-pill ${activeTab==='root'?'active':''}" onclick="rootPanel()">👑 إدارة النظام</button>`:''}
-      <button class="nav-pill" id="dkBtn" onclick="toggleDark()" title="تبديل المظهر">${isDk?'☀️':'🌙'}</button>
+      ${isRoot()?`<button class="nav-pill root-pill ${activeTab==='root'?'active':''}" onclick="rootPanel()">👑 إدارة النظام (Root)</button>`:''}
     </div>
   </div>`;
 }
@@ -208,40 +182,24 @@ let loops = [], S = null;
 const clearLoops = () => { loops.forEach(clearInterval); loops=[]; };
 const saveT = t => { teacher = t; t ? localStorage.setItem('itqan_teacher', JSON.stringify(t)) : localStorage.removeItem('itqan_teacher'); };
 
-/* ============== الصفحة الرئيسية المطورة ============== */
+/* ============== الصفحة الرئيسية ============== */
 function home(){
   clearLoops();
-  show(`<div class="card center" style="padding:36px 20px">
-    <div style="display:inline-flex;margin-bottom:12px">${LOGO_SVG.replace('width="44" height="44"','width="78" height="78"')}</div>
-    <h1>مرحباً بك في منصة <span style="color:#0ea5e9">Itqan | إتقان</span></h1>
-    <p class="mut" style="max-width:600px;margin:10px auto 28px;font-size:15.5px">بيئة اختبارات رقمية عصرية وآمنة تجمع بين سهولة الاستخدام، منع الغش الفوري، والتحليل الإحصائي المتكامل لنتائج الطلاب.</p>
-    <div class="grid2" style="max-width:740px;margin:0 auto">
-      <div class="card-soft hero-portal" onclick="teacher?dash():tAuth()">
-        <div class="ico">👨‍🏫</div>
+  show(`<div class="card center" style="padding:38px 20px">
+    <div style="display:inline-flex;margin-bottom:12px">${LOGO_SVG.replace('width="44" height="44"','width="76" height="76"')}</div>
+    <h1>مرحباً بك في منصة <span style="color:#0ea5e9">Itqan</span></h1>
+    <p class="mut" style="max-width:580px;margin:10px auto 28px;font-size:15px">بيئة اختبارات رقمية عصرية وآمنة تجمع بين سهولة الاستخدام، منع الغش الفوري، والتحليل الإحصائي المتكامل لنتائج الطلاب.</p>
+    <div class="grid2" style="max-width:720px;margin:0 auto">
+      <div class="card-soft" style="cursor:pointer;padding:28px" onclick="teacher?dash():tAuth()">
+        <div style="font-size:44px;margin-bottom:10px">👨‍🏫</div>
         <h2>بوابة المعلم</h2>
-        <p class="mut">إنشاء الاختبارات، إدارة الجلسات الحية، رفع كشوف الطلاب، وتحليل الإحصائيات والرسوم البيانية</p>
+        <p class="mut">إنشاء الاختبارات، إدارة الجلسات الحية، وتحليل الإحصائيات والرسوم البيانية</p>
       </div>
-      <div class="card-soft hero-portal" onclick="sJoin()">
-        <div class="ico">🎓</div>
+      <div class="card-soft" style="cursor:pointer;padding:28px" onclick="sJoin()">
+        <div style="font-size:44px;margin-bottom:10px">🎓</div>
         <h2>بوابة الطالب</h2>
-        <p class="mut">الدخول السريع والآمن إلى الاختبار عبر الكود المتغير أو رمز QR واستخراج شهادة الاجتياز</p>
+        <p class="mut">الدخول السريع إلى الاختبار عبر الكود المباشر أو رمز QR</p>
       </div>
-    </div>
-  </div>
-
-  <div class="grid4" style="margin-bottom:16px">
-    <div class="stat-box"><div style="font-size:26px">🛡️</div><h3>حماية ضد الغش</h3><p class="mut" style="font-size:12.5px">أكواد ديناميكية، ملء الشاشة، طمس فوري، وعلامة مائية</p></div>
-    <div class="stat-box"><div style="font-size:26px">⚡</div><h3>تصحيح وتحليل فوري</h3><p class="mut" style="font-size:12.5px">متوسط ووسيط ورسوم بيانية وتحديد الأوائل والغائبين</p></div>
-    <div class="stat-box"><div style="font-size:26px">📂</div><h3>تكامل الملفات</h3><p class="mut" style="font-size:12.5px">استيراد كشوف Excel و Word وتصدير نسخ HTML دائمة</p></div>
-    <div class="stat-box"><div style="font-size:26px">📱</div><h3>توافق شامل</h3><p class="mut" style="font-size:12.5px">يعمل بسلاسة على الهواتف الذكية والأجهزة اللوحية والحواسيب</p></div>
-  </div>
-
-  <div class="card">
-    <h2 class="center">🚀 كيف تعمل منصة إتقان في 3 خطوات؟</h2>
-    <div class="grid3" style="margin-top:14px;text-align:center">
-      <div class="card-soft"><div class="step-num">1</div><h3>أنشئ اختبارك</h3><p class="mut" style="font-size:13px">أضف الأسئلة والصور وحدد كشف الطلاب المسموح لهم وخيارات الأمان</p></div>
-      <div class="card-soft"><div class="step-num">2</div><h3>شارك الكود الحَي</h3><p class="mut" style="font-size:13px">اعرض رمز QR والكود السداسي المتجدد تلقائياً داخل القاعة</p></div>
-      <div class="card-soft"><div class="step-num">3</div><h3>احصد النتائج</h3><p class="mut" style="font-size:13px">راقب الحضور لحظياً وصدّر كشف الدرجات والتقديرات إلى Excel</p></div>
     </div>
   </div>`, 'home');
 }
@@ -249,17 +207,12 @@ function home(){
 /* ============== تبويب منشئ المنصة ============== */
 function aboutCreator(){
   clearLoops();
-  show(`<div style="max-width:650px;margin:2vh auto">
+  show(`<div style="max-width:640px;margin:2vh auto">
     <div class="creator-card">
-      <div class="avatar-ring"><img src="Picsart_25-05-13_15-27-56-767.jpg" alt="الباهي عبدالرحمن" class="creator-photo" onerror="this.style.display='none'"></div>
+      <img src="Picsart_25-05-13_15-27-56-767.jpg" alt="الباهي عبدالرحمن" class="creator-photo" onerror="this.style.display='none'">
       <div><span class="badge b-info" style="margin-bottom:8px">مؤسس ومطور المنصة</span></div>
-      <h1 style="font-size:28px;margin-bottom:8px">الباهي عبدالرحمن</h1>
-      <div class="row" style="justify-content:center;margin-bottom:14px">
-        <span class="badge b-purp">تطوير المنصات التعليمية</span>
-        <span class="badge b-ok">أمن الاختبارات الرقمية</span>
-        <span class="badge b-info">تصميم النظم التفاعلية</span>
-      </div>
-      <p class="mut" style="font-size:15px;max-width:520px;margin:0 auto 22px">مصمم ومطور منصة <b>Itqan | إتقان</b> للاختبارات الرقمية الذكية والآمنة، والمصممة لتمكين المعلمين والطلاب من إجراء التقييمات الإلكترونية بأعلى درجات الدقة والموثوقية.</p>
+      <h1 style="font-size:28px;margin-bottom:8px;color:#0f172a">الباهي عبدالرحمن</h1>
+      <p class="mut" style="font-size:15px;max-width:500px;margin:0 auto 22px;color:#334155">مصمم ومطور منصة <b>Itqan | إتقان</b> للاختبارات الرقمية الذكية والآمنة، والمصممة لتمكين المعلمين والطلاب من إجراء التقييمات الإلكترونية بأعلى درجات الدقة والموثوقية.</p>
       <div class="grid2" style="text-align:right;margin-top:16px">
         <div class="card" style="margin:0;padding:16px">
           <h3>🎯 رؤية المنصة</h3>
@@ -270,10 +223,7 @@ function aboutCreator(){
           <p class="mut">تشفير الجلسات، أكواد دخول متغيرة ديناميكياً، رصد المخالفات اللحظي، ولوحات تحليل شاملة للدرجات.</p>
         </div>
       </div>
-      <div class="row" style="justify-content:center;margin-top:24px">
-        <button class="btn pri" onclick="home()">العودة إلى الصفحة الرئيسية</button>
-        <button class="btn" onclick="navigator.clipboard?.writeText(location.origin+location.pathname);toast('تم نسخ رابط المنصة لمشاركته!')">🔗 نسخ رابط المنصة</button>
-      </div>
+      <button class="btn pri" style="margin-top:24px" onclick="home()">العودة إلى الصفحة الرئيسية</button>
     </div>
   </div>`, 'creator');
 }
@@ -298,7 +248,7 @@ function tAuth(mode='login'){
     ${mode==='reg'?'<label>اسم المعلم الكامل</label><input id="nm" placeholder="د. محمد أحمد">':''}
     <label>البريد الإلكتروني (Gmail)</label><input id="em" type="email" dir="ltr" placeholder="name@gmail.com">
     <label>كلمة المرور</label><input id="pw" type="password" dir="ltr" placeholder="••••••••">
-    ${mode==='login'?'<div style="text-align:left;margin-top:6px"><a href="#" id="rst" style="color:#0ea5e9;font-size:13px;font-weight:700;text-decoration:none">نسيت كلمة المرور؟ استعادتها عبر البريد</a></div>':''}
+    ${mode==='login'?'<div style="text-align:left;margin-top:6px"><a href="#" id="rst" style="color:#4f46e5;font-size:13px;font-weight:700;text-decoration:none">نسيت كلمة المرور؟ استعادتها عبر البريد</a></div>':''}
     <button class="btn pri" style="width:100%;margin-top:16px" id="go">${mode==='login'?'دخول لوحة التحكم':'إنشاء الحساب'}</button>
   </div></div>`, 'teacher');
 
@@ -381,8 +331,9 @@ function exportExamHtml(ex){
   <p><b>عنوان الاختبار:</b> ${esc(ex.title)} | <b>المدة:</b> ${ex.duration} دقيقة | <b>عدد الأسئلة:</b> ${(ex.questions||[]).length}</p>
   <p style="background:#e0f2fe;padding:10px;border-radius:8px;color:#0369a1">💡 يمكنك استعادة هذا الاختبار بالكامل في أي وقت داخل حسابك على منصة <b>Itqan</b> عبر زر <b>(📤 استيراد اختبار HTML)</b>.</p>
   <hr>${qPreview}</div>
+  <!-- ITQAN_EXAM_BACKUP_START -->
   <script id="itqan-exam-data" type="application/json">${payload}<\/script>
-  </body></html>`;
+  <!-- ITQAN_EXAM_BACKUP_END --></body></html>`;
 
   const blob = new Blob([htmlDoc], {type:'text/html;charset=utf-8'});
   const a = document.createElement('a');
@@ -401,54 +352,30 @@ async function importExamHtml(file){
     if(!parsed.title || !Array.isArray(parsed.questions)) return toast('بنية ملف الاختبار غير مكتملة');
     const newId = rid(6);
     const now = Date.now();
-    const restored = {...parsed, id:newId, owner:teacher.id, open:false, created:now, lastUsed:now};
+    const restored = {
+      ...parsed,
+      id: newId,
+      owner: teacher.id,
+      open: false,
+      created: now,
+      lastUsed: now
+    };
     await fb(`exams/${newId}`, 'PUT', restored);
     toast(`تم استيراد الاختبار "${restored.title}" بنجاح!`);
     dash();
   }catch(e){ toast('تعذر استيراد الملف: ' + e.message); }
 }
 
-/* ============== معاينة الاختبار كطالب ============== */
-async function previewExam(id){
-  const ex = await fb(`exams/${id}`);
-  const qs = ex.questions || [];
-  let idx = 0, ans = {};
-  const m = document.createElement('div'); m.className = 'modal';
-  const drawP = () => {
-    const q = qs[idx], a = ans[q.id];
-    let inp = '';
-    if(q.type==='mcq'||q.type==='multi') inp = q.options.map((o,oi)=>`<button class="opt ${(q.type==='mcq'?a===oi:(a||[]).includes(oi))?'sel':''}" data-po="${oi}"><i>${q.type==='mcq'?'●':'✓'}</i><span>${esc(o)}</span></button>`).join('');
-    if(q.type==='tf') inp = [0,1].map(k=>`<button class="opt ${a===k?'sel':''}" data-po="${k}"><i>●</i><span>${k===0?'صح':'خطأ'}</span></button>`).join('');
-    if(q.type==='short'||q.type==='essay') inp = `<textarea placeholder="مساحة إجابة الطالب..."></textarea>`;
-    m.innerHTML = `<div>
-      <div class="row between" style="margin-bottom:10px"><span class="badge b-purp">👁️ وضع معاينة المعلم (لا تُحفظ بيانات)</span><button class="btn sm" id="clP">✕ إغلاق المعاينة</button></div>
-      <div class="row between"><span class="badge b-info">سؤال ${idx+1} من ${qs.length}</span><span class="badge b-warn">${q.points} درجة</span></div>
-      ${q.img?`<img src="${esc(q.img)}" style="max-width:100%;max-height:220px;border-radius:12px;margin-top:10px">`:''}
-      <h2 style="margin:12px 0">${esc(q.text)}</h2>${inp}
-      <div class="row between" style="margin-top:16px">
-        ${idx>0?'<button class="btn sm" id="pPrev">→ السابق</button>':'<span></span>'}
-        ${idx<qs.length-1?'<button class="btn pri sm" id="pNext">التالي ←</button>':'<button class="btn ok sm" id="clP2">✔ إنهاء المعاينة</button>'}
-      </div>
-    </div>`;
-    m.querySelectorAll('[data-po]').forEach(b=>b.onclick=()=>{const v=+b.dataset.po;if(q.type==='multi'){const c=new Set(ans[q.id]||[]);c.has(v)?c.delete(v):c.add(v);ans[q.id]=[...c]}else ans[q.id]=v;drawP()});
-    $('#clP').onclick=()=>m.remove();
-    if($('#clP2')) $('#clP2').onclick=()=>m.remove();
-    if($('#pPrev')) $('#pPrev').onclick=()=>{idx--;drawP()};
-    if($('#pNext')) $('#pNext').onclick=()=>{idx++;drawP()};
-  };
-  document.body.appendChild(m);
-  drawP();
-}
-
-/* ============== لوحة تحكم المعلم + البحث والتصفية + الأرشفة ============== */
+/* ============== لوحة تحكم المعلم + التنظيف التلقائي بعد 5 أشهر ============== */
 async function dash(){
   clearLoops();
   show('<div class="card center mut">جاري تحميل اختباراتك والتحقق من الأرشفة التلقائية...</div>', 'teacher');
   
+  // التحقق من حالة الحظر
   const dbT = await fb(`teachers/${teacher.id}`).catch(()=>null);
   if(dbT && dbT.banned){
     await auth.signOut().catch(()=>{}); saveT(null);
-    return show('<div class="card center" style="padding:40px"><div class="big">🚫</div><h2>تم إيقاف هذا الحساب من قِبل إدارة المنصة</h2></div>', 'home');
+    return show('<div class="card center" style="padding:40px"><div class="big">🚫</div><h2>تم إيقاف هذا الحساب من قِبل إدارة المنصة</h2><p class="mut">تواصل مع مدير النظام لمزيد من التفاصيل.</p></div>', 'home');
   }
 
   const all = await fb('exams') || {};
@@ -456,6 +383,7 @@ async function dash(){
   const now = Date.now();
   let autoDeletedCount = 0;
 
+  // حذف الاختبارات التي مر عليها أكثر من 5 أشهر دون استخدام
   const activeList = [];
   for(const e of myExams){
     const lastAct = e.lastUsed || e.created || now;
@@ -467,72 +395,55 @@ async function dash(){
       activeList.push(e);
     }
   }
-  if(autoDeletedCount > 0) toast(`تنبيه الصيانة التلقائية: تم حذف ${autoDeletedCount} اختبار قديم مرّ عليه أكثر من 5 أشهر دون استخدام.`);
+  if(autoDeletedCount > 0){
+    toast(`تنبيه الصيانة التلقائية: تم حذف ${autoDeletedCount} اختبار قديم مرّ عليه أكثر من 5 أشهر دون استخدام.`);
+  }
 
   const list = activeList.sort((a,b)=>(b.lastUsed||b.created||0)-(a.lastUsed||a.created||0));
-  let qFilter = '', statusFilter = 'all';
-
-  const renderDash = () => {
-    const filtered = list.filter(e => {
-      const matchText = !qFilter || e.title.toLowerCase().includes(qFilter);
-      const matchStatus = statusFilter==='all' || (statusFilter==='open'&&e.open) || (statusFilter==='closed'&&!e.open) || (statusFilter==='restricted'&&e.restrictStudents);
-      return matchText && matchStatus;
-    });
-
-    show(`<div class="card"><div class="row between">
-      <div><h1>أهلاً بك، ${esc(teacher.name)}</h1><span class="mut">${esc(teacher.email)}</span></div>
-      <div class="row">
-        <button class="btn pri" id="nw">＋ إنشاء اختبار جديد</button>
-        <label class="btn" style="margin:0;cursor:pointer">📤 استيراد HTML<input type="file" id="impF" accept=".html,.htm" style="display:none"></label>
-        <button class="btn" id="out">خروج</button>
+  show(`<div class="card"><div class="row between">
+    <div><h1>أهلاً بك، ${esc(teacher.name)}</h1><span class="mut">${esc(teacher.email)}</span></div>
+    <div class="row">
+      <button class="btn pri" id="nw">＋ إنشاء اختبار جديد</button>
+      <label class="btn" style="margin:0;cursor:pointer">📤 استيراد اختبار HTML<input type="file" id="impF" accept=".html,.htm" style="display:none"></label>
+      <button class="btn" id="out">خروج</button>
+    </div>
+  </div>
+  <div class="mut" style="margin-top:10px;font-size:12.5px">💡 للحفاظ على سرعة المنصة: تُحذف الاختبارات غير المستخدمة لمدة 5 أشهر تلقائياً. احتفظ بنسخة دائمة على جهازك بالضغط على <b>(📥 تصدير HTML)</b>.</div>
+  </div>
+  ${list.length?list.map(e=>`<div class="card"><div class="row between">
+    <div><h2 style="margin:0">${esc(e.title)}</h2>
+      <div class="row" style="margin-top:8px">
+        <span class="badge ${e.open?'b-ok':'b-warn'}">${e.open?'🟢 الجلسة مفتوحة':'🔴 الجلسة مغلقة'}</span>
+        <span class="badge b-info">${(e.questions||[]).length} سؤال</span>
+        <span class="badge b-purp">${e.duration} دقيقة</span>
+        ${e.restrictStudents?`<span class="badge b-ok">🔒 مقيّد بقائمة (${(e.allowedList||[]).length} طالب)</span>`:''}
       </div>
     </div>
-    <div class="row between" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--bd)">
-      <input id="srch" value="${esc(qFilter)}" placeholder="🔍 ابحث في اختباراتك بالاسم..." style="max-width:320px;margin:0">
-      <div class="row">
-        ${[['all','الكل'],['open','🟢 المفتوحة'],['closed','🔴 المغلقة'],['restricted','🔒 مقيّدة بكشف']].map(([k,lbl])=>`<button class="btn sm ${statusFilter===k?'pri':''}" data-flt="${k}">${lbl}</button>`).join('')}
-      </div>
-    </div>
-    </div>
-    <div id="exList">${filtered.length?filtered.map(e=>`<div class="card"><div class="row between">
-      <div><h2 style="margin:0">${esc(e.title)}</h2>
-        <div class="row" style="margin-top:8px">
-          <span class="badge ${e.open?'b-ok':'b-warn'}">${e.open?'🟢 الجلسة مفتوحة':'🔴 الجلسة مغلقة'}</span>
-          <span class="badge b-info">${(e.questions||[]).length} سؤال</span>
-          <span class="badge b-purp">${e.duration} دقيقة</span>
-          ${e.qTimer>0?`<span class="badge b-warn">⏱️ ${e.qTimer} ث/سؤال</span>`:''}
-          ${e.restrictStudents?`<span class="badge b-ok">🔒 كشف (${(e.allowedList||[]).length} طالب)</span>`:''}
-        </div>
-      </div>
-      <div class="row">
-        <button class="btn pri sm" onclick="live('${e.id}')">▶ الجلسة الحية</button>
-        <button class="btn sm" onclick="results('${e.id}')">📊 الإحصائيات</button>
-        <button class="btn sm" onclick="previewExam('${e.id}')">👁️ معاينة</button>
-        <button class="btn sm" onclick="builder('${e.id}')">✏️ تعديل</button>
-        <button class="btn sm" onclick="exportExamHtml(${JSON.stringify(e).replace(/"/g,'"')})">📥 HTML</button>
-        <button class="btn bad sm" onclick="delEx('${e.id}')">🗑️</button>
-      </div></div></div>`).join(''):'<div class="card center mut" style="padding:40px">لا توجد اختبارات مطابقة للبحث الحالي.</div>'}</div>`, 'teacher');
+    <div class="row">
+      <button class="btn pri sm" onclick="live('${e.id}')">▶ الجلسة الحية</button>
+      <button class="btn sm" onclick="results('${e.id}')">📊 الإحصائيات</button>
+      <button class="btn sm" onclick="builder('${e.id}')">✏️ تعديل</button>
+      <button class="btn sm" id="exp_${e.id}">📥 تصدير HTML</button>
+      <button class="btn bad sm" onclick="delEx('${e.id}')">🗑️</button>
+    </div></div></div>`).join(''):'<div class="card center mut" style="padding:40px">لا توجد اختبارات بعد. اضغط على "＋ إنشاء اختبار جديد" أو استورد ملف اختبار HTML.</div>'}`, 'teacher');
 
-    $('#nw').onclick=()=>builder();
-    $('#impF').onchange=e=>{ if(e.target.files[0]) importExamHtml(e.target.files[0]); };
-    $('#out').onclick=async()=>{await auth.signOut().catch(()=>{});saveT(null);home()};
-    $('#srch').oninput=e=>{ qFilter=e.target.value.trim().toLowerCase(); renderDash(); $('#srch').focus(); };
-    document.querySelectorAll('[data-flt]').forEach(b=>b.onclick=()=>{ statusFilter=b.dataset.flt; renderDash(); });
-  };
-  renderDash();
+  list.forEach(e => { const btn = $(`#exp_${e.id}`); if(btn) btn.onclick = () => exportExamHtml(e); });
+  $('#nw').onclick=()=>builder();
+  $('#impF').onchange=e=>{ if(e.target.files[0]) importExamHtml(e.target.files[0]); };
+  $('#out').onclick=async()=>{await auth.signOut().catch(()=>{});saveT(null);home()};
 }
 
 async function delEx(id){if(!confirm('هل تريد حذف الاختبار وجميع نتائجه نهائياً؟'))return;await fb(`exams/${id}`,'DELETE');await fb(`attempts/${id}`,'DELETE');toast('تم الحذف');dash();}
 
-/* ============== منشئ الاختبار + بنك الأسئلة + مؤقت السؤال + كشف الطلاب ============== */
+/* ============== منشئ الاختبار + رفع قائمة الطلاب (Excel / Word) ============== */
 const QT={mcq:'اختيار من متعدد',multi:'متعدد الإجابات',tf:'صح / خطأ',short:'إجابة قصيرة',essay:'مقالي'};
 async function builder(id){
-  let M = id ? await fb(`exams/${id}`) : {title:'',desc:'',duration:30,qTimer:0,shuffleQ:true,shuffleO:true,allowBack:false,showScore:false,rotate:45,restrictStudents:false,allowedList:[],questions:[]};
+  let M = id ? await fb(`exams/${id}`) : {title:'',desc:'',duration:30,shuffleQ:true,shuffleO:true,allowBack:false,showScore:false,rotate:45,restrictStudents:false,allowedList:[],questions:[]};
   M.questions = M.questions || [];
   M.allowedList = M.allowedList || [];
   if(id) fb(`exams/${id}`, 'PATCH', {lastUsed:Date.now()}).catch(()=>{});
 
-  const mk=t=>({id:rid(4),type:t,text:'',img:'',points:1,...(t==='mcq'?{options:['',''],correct:0}:t==='multi'?{options:['',''],correct:[]}:t==='tf'?{correct:0}:t==='short'?{correct:''}:{})});
+  const mk=t=>({id:rid(4),type:t,text:'',points:1,...(t==='mcq'?{options:['',''],correct:0}:t==='multi'?{options:['',''],correct:[]}:t==='tf'?{correct:0}:t==='short'?{correct:''}:{})});
 
   const parseStudentFile = async (file) => {
     try{
@@ -582,40 +493,12 @@ async function builder(id){
     }catch(err){ toast('خطأ في قراءة الملف: ' + err.message); }
   };
 
-  const openBankModal = async () => {
-    const bankObj = await fb(`qbank/${teacher.id}`) || {};
-    const bankList = Object.values(bankObj);
-    const m = document.createElement('div'); m.className='modal';
-    m.innerHTML = `<div><div class="row between"><h2>📚 بنك الأسئلة الشخصي (${bankList.length})</h2><button class="btn sm" id="clB">✕</button></div>
-      <p class="mut" style="margin-bottom:12px">اختر الأسئلة لإضافتها مباشرة إلى هذا الاختبار:</p>
-      ${bankList.length ? bankList.map((bq,i)=>`<div class="qc row between">
-        <div style="max-width:75%"><b>${esc(bq.text)}</b><div class="mut">${QT[bq.type]} | ${bq.points} درجة</div></div>
-        <div class="row">
-          <button class="btn pri sm" data-impb="${i}">＋ إضافة</button>
-          <button class="btn bad sm" data-delb="${bq.id}">🗑️</button>
-        </div>
-      </div>`).join('') : '<p class="mut center" style="padding:20px">بنك الأسئلة فارغ حالياً. يمكنك حفظ أي سؤال بالضغط على زر (⭐ حفظ في البنك) بجانب السؤال.</p>'}
-    </div>`;
-    document.body.appendChild(m);
-    $('#clB').onclick=()=>m.remove();
-    m.querySelectorAll('[data-impb]').forEach(b=>b.onclick=()=>{
-      const item = {...bankList[+b.dataset.impb], id:rid(4)};
-      M.questions.push(item); toast('تم استيراد السؤال للاختبار'); m.remove(); draw();
-    });
-    m.querySelectorAll('[data-delb]').forEach(b=>b.onclick=async()=>{
-      await fb(`qbank/${teacher.id}/${b.dataset.delb}`, 'DELETE'); toast('تم الحذف من البنك'); m.remove(); openBankModal();
-    });
-  };
-
   const draw=()=>{
     show(`<div class="row between" style="margin-bottom:12px"><h1>${id?'✏️ تعديل الاختبار':'🆕 إنشاء اختبار جديد'}</h1><button class="btn" id="bk">→ رجوع</button></div>
     <div class="card"><label>عنوان الاختبار</label><input data-f="title" value="${esc(M.title)}" placeholder="مثال: اختبار منتصف الفصل - نظم التشغيل"><label>تعليمات للطلاب (اختياري)</label><textarea data-f="desc" style="min-height:60px">${esc(M.desc)}</textarea>
-      <div class="grid3">
-        <div style="margin-top:8px"><label>المدة الكلية للاختبار (دقائق)</label><input type="number" min="1" data-f="duration" value="${M.duration}"></div>
-        <div style="margin-top:8px"><label>مؤقت مستقل لكل سؤال (اختياري)</label><select data-f="qTimer">${[[0,'بدون مؤقت للسؤال (حر)'],[20,'20 ثانية لكل سؤال'],[30,'30 ثانية لكل سؤال'],[45,'45 ثانية لكل سؤال'],[60,'دقيقة واحدة لكل سؤال'],[90,'90 ثانية لكل سؤال']].map(o=>`<option value="${o[0]}" ${(M.qTimer||0)==o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>
-        <div style="margin-top:8px"><label>تغيّر كود الدخول تلقائياً كل</label><select data-f="rotate">${[[0,'ثابت (يغيّره المعلم يدوياً)'],[30,'30 ثانية'],[45,'45 ثانية'],[60,'دقيقة واحدة'],[120,'دقيقتان']].map(o=>`<option value="${o[0]}" ${M.rotate==o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>
-      </div>
-      <div class="row" style="margin-top:14px">${[['shuffleQ','ترتيب عشوائي للأسئلة'],['shuffleO','ترتيب عشوائي للخيارات'],['allowBack','السماح بالرجوع للأسئلة السابقة'],['showScore','إظهار الدرجة وشهادة الاجتياز للطالب']].map(c=>`<label class="row" style="margin:0;cursor:pointer"><input type="checkbox" style="width:auto;margin:0" data-f="${c[0]}" ${M[c[0]]?'checked':''}> ${c[1]}</label>`).join('')}</div>
+      <div class="grid2"><div style="margin-top:8px"><label>مدة الاختبار (بالدقائق)</label><input type="number" min="1" data-f="duration" value="${M.duration}"></div>
+        <div style="margin-top:8px"><label>تغيّر كود الدخول تلقائياً كل</label><select data-f="rotate">${[[0,'ثابت (يغيّره المعلم يدوياً)'],[30,'30 ثانية'],[45,'45 ثانية'],[60,'دقيقة واحدة'],[120,'دقيقتان']].map(o=>`<option value="${o[0]}" ${M.rotate==o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div></div>
+      <div class="row" style="margin-top:14px">${[['shuffleQ','ترتيب عشوائي للأسئلة'],['shuffleO','ترتيب عشوائي للخيارات'],['allowBack','السماح بالرجوع للأسئلة السابقة'],['showScore','إظهار الدرجة للطالب بعد التسليم']].map(c=>`<label class="row" style="margin:0;cursor:pointer"><input type="checkbox" style="width:auto;margin:0" data-f="${c[0]}" ${M[c[0]]?'checked':''}> ${c[1]}</label>`).join('')}</div>
       
       <div class="wl-box">
         <label class="row" style="margin:0;cursor:pointer;color:#15803d;font-size:14px">
@@ -628,22 +511,18 @@ async function builder(id){
             <label class="btn ok sm" style="margin:0;cursor:pointer">📂 اختيار ملف Excel أو Word<input type="file" id="wlFile" accept=".xlsx,.xls,.csv,.docx" style="display:none"></label>
             ${M.allowedList.length ? `<span class="badge b-ok">✔ تم تحميل ${M.allowedList.length} طالب</span> <button class="btn bad sm" id="clrWl">مسح القائمة</button>` : '<span class="badge b-warn">لم يتم رفع ملف طلاب بعد</span>'}
           </div>
-          ${M.allowedList.length ? `<div style="max-height:140px;overflow:auto;margin-top:10px;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:8px;font-size:12.5px">
-            ${M.allowedList.slice(0,30).map((s,idx)=>`<div style="padding:3px 6px;border-bottom:1px solid var(--bd)">${idx+1}. <b>${esc(s.name||'بدون اسم')}</b> — الرقم: <code>${esc(s.sid)}</code></div>`).join('')}
+          ${M.allowedList.length ? `<div style="max-height:140px;overflow:auto;margin-top:10px;background:#fff;border:1px solid #cbd5e1;border-radius:10px;padding:8px;font-size:12.5px">
+            ${M.allowedList.slice(0,30).map((s,idx)=>`<div style="padding:3px 6px;border-bottom:1px solid #f1f5f9">${idx+1}. <b>${esc(s.name||'بدون اسم')}</b> — الرقم: <code>${esc(s.sid)}</code></div>`).join('')}
             ${M.allowedList.length>30?`<div class="mut center" style="padding:4px">... و ${M.allowedList.length-30} طالب آخر</div>`:''}
           </div>` : ''}
         </div>` : ''}
       </div>
     </div>
     ${M.questions.map((q,i)=>qCard(q,i)).join('')}
-    <div class="card row between">
-      <div><b>＋ إضافة سؤال جديد:</b><div class="row" style="margin-top:10px">${Object.entries(QT).map(([k,v])=>`<button class="btn sm" data-add="${k}">${v}</button>`).join('')}</div></div>
-      <button class="btn pri sm" id="opBank">📚 استيراد من بنك الأسئلة</button>
-    </div>
+    <div class="card"><b>＋ إضافة سؤال جديد:</b><div class="row" style="margin-top:10px">${Object.entries(QT).map(([k,v])=>`<button class="btn sm" data-add="${k}">${v}</button>`).join('')}</div></div>
     <button class="btn pri" id="sv" style="width:100%;font-size:18px;padding:14px">💾 حفظ الاختبار</button>`, 'teacher');
     
     $('#bk').onclick=dash;
-    $('#opBank').onclick=openBankModal;
     if($('#wlFile')) $('#wlFile').onchange = e => { if(e.target.files[0]) parseStudentFile(e.target.files[0]); };
     if($('#clrWl')) $('#clrWl').onclick = () => { M.allowedList = []; draw(); };
     $('#sv').onclick=async()=>{
@@ -664,21 +543,11 @@ async function builder(id){
     if(q.type==='mcq'||q.type==='multi')ed=q.options.map((o,k)=>`<div class="row" style="margin:6px 0;flex-wrap:nowrap"><input type="${q.type==='mcq'?'radio':'checkbox'}" name="c${i}" style="width:auto;margin:0" data-ok="${i}:${k}" ${(q.type==='mcq'?q.correct===k:q.correct.includes(k))?'checked':''}><input data-op="${i}:${k}" value="${esc(o)}" placeholder="الخيار ${k+1}">${q.options.length>2?`<button class="btn bad sm" data-ro="${i}:${k}">✕</button>`:''}</div>`).join('')+`<button class="btn sm" data-ao="${i}">＋ إضافة خيار</button>`;
     if(q.type==='tf')ed=`<div class="row" style="margin-top:8px">${['صح','خطأ'].map((l,k)=>`<label class="row" style="margin:0"><input type="radio" name="tf${i}" style="width:auto;margin:0" data-ok="${i}:${k}" ${q.correct===k?'checked':''}> ${l}</label>`).join('')}</div>`;
     if(q.type==='short')ed=`<label>الإجابة النموذجية الصحيحة</label><input data-sh="${i}" value="${esc(q.correct)}">`;
-    return `<div class="qc"><div class="row between"><b>سؤال ${i+1} <span class="badge b-info">${QT[q.type]}</span></b><div class="row"><label style="margin:0">الدرجة</label><input type="number" min="1" style="width:68px;margin:0" data-pt="${i}" value="${q.points}"><button class="btn sm" data-svb="${i}" title="حفظ في بنك الأسئلة">⭐ حفظ بالبنك</button>${i?`<button class="btn sm" data-mv="${i}:-1">↑</button>`:''}${i<M.questions.length-1?`<button class="btn sm" data-mv="${i}:1">↓</button>`:''}<button class="btn bad sm" data-dq="${i}">حذف</button></div></div>
-    <textarea data-qt="${i}" placeholder="اكتب نص السؤال هنا..." style="min-height:60px">${esc(q.text)}</textarea>
-    <input data-qi="${i}" value="${esc(q.img||'')}" placeholder="🖼️ رابط صورة توضيحية للسؤال (اختياري)..." style="font-size:13px;padding:8px 12px">
-    ${ed}</div>`;
+    return `<div class="qc"><div class="row between"><b>سؤال ${i+1} <span class="badge b-info">${QT[q.type]}</span></b><div class="row"><label style="margin:0">الدرجة</label><input type="number" min="1" style="width:72px;margin:0" data-pt="${i}" value="${q.points}">${i?`<button class="btn sm" data-mv="${i}:-1">↑</button>`:''}${i<M.questions.length-1?`<button class="btn sm" data-mv="${i}:1">↓</button>`:''}<button class="btn bad sm" data-dq="${i}">حذف</button></div></div><textarea data-qt="${i}" placeholder="اكتب نص السؤال هنا..." style="min-height:60px">${esc(q.text)}</textarea>${ed}</div>`;
   };
-  app.oninput=e=>{const d=e.target.dataset;if(d.f&&e.target.type!=='checkbox')M[d.f]=['duration','rotate','qTimer'].includes(d.f)?+e.target.value:e.target.value;if(d.qt!==undefined)M.questions[d.qt].text=e.target.value;if(d.qi!==undefined)M.questions[d.qi].img=e.target.value;if(d.pt!==undefined)M.questions[d.pt].points=+e.target.value||1;if(d.sh!==undefined)M.questions[d.sh].correct=e.target.value;if(d.op){const[i,k]=d.op.split(':');M.questions[i].options[k]=e.target.value}};
+  app.oninput=e=>{const d=e.target.dataset;if(d.f&&e.target.type!=='checkbox')M[d.f]=d.f==='duration'||d.f==='rotate'?+e.target.value:e.target.value;if(d.qt!==undefined)M.questions[d.qt].text=e.target.value;if(d.pt!==undefined)M.questions[d.pt].points=+e.target.value||1;if(d.sh!==undefined)M.questions[d.sh].correct=e.target.value;if(d.op){const[i,k]=d.op.split(':');M.questions[i].options[k]=e.target.value}};
   app.onchange=e=>{const d=e.target.dataset;if(d.f&&e.target.type==='checkbox'){M[d.f]=e.target.checked;if(d.f==='restrictStudents')draw();}if(d.ok){const[i,k]=d.ok.split(':').map(Number),q=M.questions[i];if(q.type==='multi'){q.correct=e.target.checked?[...new Set([...q.correct,k])]:q.correct.filter(x=>x!==k)}else q.correct=k}};
-  app.onclick=async e=>{const d=e.target.dataset;
-    if(d.add){M.questions.push(mk(d.add));draw()}
-    if(d.ao!==undefined){M.questions[d.ao].options.push('');draw()}
-    if(d.ro){const[i,k]=d.ro.split(':').map(Number),q=M.questions[i];q.options.splice(k,1);if(q.type==='mcq'&&q.correct>=q.options.length)q.correct=0;draw()}
-    if(d.dq!==undefined){M.questions.splice(+d.dq,1);draw()}
-    if(d.mv){const[i,s]=d.mv.split(':').map(Number);[M.questions[i],M.questions[i+s]]=[M.questions[i+s],M.questions[i]];draw()}
-    if(d.svb!==undefined){const q=M.questions[+d.svb];if(!q.text.trim())return toast('اكتب نص السؤال أولاً');const bid=rid(6);await fb(`qbank/${teacher.id}/${bid}`,'PUT',{...q,id:bid});toast('⭐ تم حفظ السؤال في بنك الأسئلة الشخصي');}
-  };
+  app.onclick=e=>{const d=e.target.dataset;if(d.add){M.questions.push(mk(d.add));draw()}if(d.ao!==undefined){M.questions[d.ao].options.push('');draw()}if(d.ro){const[i,k]=d.ro.split(':').map(Number),q=M.questions[i];q.options.splice(k,1);if(q.type==='mcq'&&q.correct>=q.options.length)q.correct=0;draw()}if(d.dq!==undefined){M.questions.splice(+d.dq,1);draw()}if(d.mv){const[i,s]=d.mv.split(':').map(Number);[M.questions[i],M.questions[i+s]]=[M.questions[i+s],M.questions[i]];draw()}};
   draw();
 }
 
@@ -731,7 +600,7 @@ async function live(id){
   poll(); startTimers();
 }
 
-/* ============== لوحة الإحصائيات والنتائج + المخطط الدائري + الغائبون ============== */
+/* ============== لوحة الإحصائيات والنتائج ============== */
 async function results(id){
   clearLoops();
   const ex = await fb(`exams/${id}`);
@@ -762,20 +631,6 @@ async function results(id){
   const lowestRanked = [...scoredAtts].sort((a,b) => (Number(a.score??0) - Number(b.score??0)) || (getDuration(b) - getDuration(a)));
   const lastStudent = lowestRanked[0] ? `${lowestRanked[0].name} (${Number(lowestRanked[0].score??0)}/${totalPts})` : 'لا يوجد';
 
-  // حساب توزيع التقديرات للمخطط الدائري
-  const gDist = {ممتاز:0, 'جيد جداً':0, جيد:0, مقبول:0, ضعيف:0};
-  scoredAtts.forEach(a => { const gi = getGradeInfo(a.score||0, a.total||totalPts); gDist[gi.grade]++; });
-  const totG = Math.max(count, 1);
-  const p1 = (gDist['ممتاز']/totG)*100, p2 = p1+(gDist['جيد جداً']/totG)*100, p3 = p2+(gDist['جيد']/totG)*100, p4 = p3+(gDist['مقبول']/totG)*100;
-  const donutGrad = count ? `conic-gradient(#10b981 0% ${p1}%, #0ea5e9 ${p1}% ${p2}%, #8b5cf6 ${p2}% ${p3}%, #f59e0b ${p3}% ${p4}%, #ef4444 ${p4}% 100%)` : 'conic-gradient(#cbd5e1 0% 100%)';
-
-  // حساب الغائبين (في حال تفعيل قائمة الطلاب)
-  let absentees = [];
-  if(ex.restrictStudents && Array.isArray(ex.allowedList)){
-    const attendedSids = new Set(atts.map(a => normSid(a.sid)));
-    absentees = ex.allowedList.filter(item => item.sid && !attendedSids.has(normSid(item.sid)));
-  }
-
   const qStats = qs.map((q) => {
     let correctCount = 0;
     scoredAtts.forEach(a => {
@@ -793,7 +648,7 @@ async function results(id){
     <div class="stat-box"><div class="mut">المتوسط الحسابي</div><div class="stat-val">${mean} / ${totalPts}</div><div class="mut">نقطة</div></div>
     <div class="stat-box"><div class="mut">الوسيط (Median)</div><div class="stat-val">${median} / ${totalPts}</div><div class="mut">نقطة</div></div>
     <div class="stat-box"><div class="mut">النطاق (الأدنى - الأعلى)</div><div class="stat-val">${minS} - ${maxS}</div><div class="mut">من ${totalPts} نقطة</div></div>
-    <div class="stat-box"><div class="mut">الدرجة الأكثر تكراراً</div><div class="stat-val" style="font-size:19px">${modeVal}</div><div class="mut">المختبرون: ${count}${ex.restrictStudents?` | الغائبون: ${absentees.length}`:''}</div></div>
+    <div class="stat-box"><div class="mut">الدرجة الأكثر تكراراً</div><div class="stat-val" style="font-size:19px">${modeVal}</div><div class="mut">إجمالي المختبرين: ${count}</div></div>
   </div>
 
   <div class="grid2" style="margin-bottom:16px">
@@ -801,31 +656,14 @@ async function results(id){
     <div class="card-soft row between"><div><div class="mut">📉 الطالب الأخير (الأقل درجة)</div><b style="font-size:17px;color:#b91c1c">${esc(lastStudent)}</b></div><span style="font-size:28px">📌</span></div>
   </div>
 
-  <div class="grid2">
-    <div class="card">
-      <h2>📈 توزيع إجمالي النقاط</h2>
-      ${count ? `<div class="chart-wrap">${Object.entries(freq).sort((a,b)=>Number(a[0])-Number(b[0])).map(([sc,cnt])=>`
-        <div class="chart-col">
-          <div class="chart-cnt">${cnt}</div>
-          <div class="chart-bar" style="height:${Math.max((cnt/maxBar)*120, 8)}px" title="${cnt} طالب حصل على ${sc}"></div>
-          <div class="chart-lbl">${sc}</div>
-        </div>`).join('')}</div>` : '<p class="mut">لا توجد درجات مسجلة بعد.</p>'}
-    </div>
-    <div class="card">
-      <h2>🍩 توزيع التقديرات الأكاديمية</h2>
-      <div class="row" style="justify-content:center;gap:24px;margin-top:16px">
-        <div style="width:140px;height:140px;border-radius:50%;background:${donutGrad};display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(0,0,0,.08)">
-          <div style="width:86px;height:86px;border-radius:50%;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center"><b>${count}</b><span class="mut" style="font-size:11px">طالب</span></div>
-        </div>
-        <div style="font-size:13px;line-height:1.9">
-          <div><span style="color:#10b981">●</span> ممتاز: <b>${gDist['ممتاز']}</b></div>
-          <div><span style="color:#0ea5e9">●</span> جيد جداً: <b>${gDist['جيد جداً']}</b></div>
-          <div><span style="color:#8b5cf6">●</span> جيد: <b>${gDist['جيد']}</b></div>
-          <div><span style="color:#f59e0b">●</span> مقبول: <b>${gDist['مقبول']}</b></div>
-          <div><span style="color:#ef4444">●</span> ضعيف: <b>${gDist['ضعيف']}</b></div>
-        </div>
-      </div>
-    </div>
+  <div class="card">
+    <h2>📈 توزيع إجمالي النقاط</h2>
+    ${count ? `<div class="chart-wrap">${Object.entries(freq).sort((a,b)=>Number(a[0])-Number(b[0])).map(([sc,cnt])=>`
+      <div class="chart-col">
+        <div class="chart-cnt">${cnt}</div>
+        <div class="chart-bar" style="height:${Math.max((cnt/maxBar)*120, 8)}px" title="${cnt} طالب حصل على ${sc}"></div>
+        <div class="chart-lbl">${sc}</div>
+      </div>`).join('')}</div><div class="center mut" style="margin-top:6px;font-size:12px">النقاط المسجلة (المحور الأفقي) مقابل عدد الطلاب (المحور الرأسي)</div>` : '<p class="mut">لا توجد درجات مسجلة بعد لعرض الرسم البياني.</p>'}
   </div>
 
   <div class="card">
@@ -836,11 +674,6 @@ async function results(id){
         <div><span class="badge b-bad">الإجابات الصحيحة: ${q.correctCount} / ${q.total} (${q.ratio}%)</span></div>
       </div>`).join('') : '<p class="mut">ممتاز! لا توجد أسئلة ذات نسبة خطأ مرتفعة حتى الآن.</p>'}
   </div>
-
-  ${ex.restrictStudents ? `<div class="card">
-    <h2>🚫 كشف الطلاب الغائبين عن الاختبار (${absentees.length} طالب)</h2>
-    ${absentees.length ? `<div class="row" style="gap:8px">${absentees.map(ab=>`<span class="badge b-warn">${esc(ab.name||'طالب')} (${esc(ab.sid)})</span>`).join('')}</div>` : '<p class="mut">حضر جميع الطلاب المدرجين في الكشف بنسبة 100%!</p>'}
-  </div>` : ''}
 
   <div class="card">
     <h2>📋 كشف درجات وتقديرات الطلاب</h2>
@@ -897,7 +730,7 @@ async function results(id){
 }
 const fmtAns=(q,v)=>v===undefined||v===null||v===''?'لم يجب':q.type==='mcq'?q.options[v]:q.type==='multi'?(v||[]).map(i=>q.options[i]).join('، '):q.type==='tf'?(v===0?'صح':'خطأ'):v;
 
-/* ============== لوحة تحكم الأدمن / الروت السرية ============== */
+/* ============== لوحة تحكم الأدمن / الروت السرية (للباهي عبدالرحمن فقط) ============== */
 async function rootPanel(){
   if(!isRoot()){ toast('⛔ صلاحية مرفوضة'); return home(); }
   clearLoops();
@@ -942,7 +775,7 @@ async function rootPanel(){
             <td>${tExams.length} اختبار</td>
             <td><span class="badge ${t.banned?'b-bad':'b-ok'}">${t.banned?'محظور':'نشط'}</span></td>
             <td class="row">
-              <button class="btn sm" onclick="rootInspectTeacher('${t.id}')">👁️ معاينة الاختبارات</button>
+              <button class="btn sm" onclick="rootInspectTeacher('${t.id}')">👁️ معاينة اختبارات المعلم</button>
               ${!isMe ? `<button class="btn ${t.banned?'ok':'bad'} sm" onclick="rootToggleBan('${t.id}', ${!t.banned})">${t.banned?'🔓 فك الحظر':'🚫 حظر الحساب'}</button>` : ''}
             </td>
           </tr>`;
@@ -1011,7 +844,7 @@ async function rootInspectTeacher(tid){
   $('#clM').onclick = () => m.remove();
 }
 
-/* ============== بوابة الطالب والحماية + خريطة الأسئلة + المؤقت الدائري + الشهادة ============== */
+/* ============== بوابة الطالب والحماية + التحقق من قائمة الطلاب ============== */
 function sJoin(pc=''){
   clearLoops();
   show(`<div style="max-width:450px;margin:2vh auto"><div class="card">
@@ -1029,6 +862,7 @@ function sJoin(pc=''){
       const ex = Object.values(all).find(x => x && x.open && String(x.code) === code);
       if(!ex) return toast('كود الدخول غير صحيح أو انتهت صلاحيته');
 
+      // التحقق من قائمة الطلاب المسموح لهم (إن قام المعلم بتفعيلها)
       if(ex.restrictStudents && Array.isArray(ex.allowedList) && ex.allowedList.length > 0){
         const sNorm = normSid(sid);
         const nNorm = name.trim().replace(/\s+/g,' ');
@@ -1062,19 +896,12 @@ function sJoin(pc=''){
 function startExam(ex, att){
   clearLoops();
   const qMap = Object.fromEntries(ex.questions.map(q=>[q.id,q]));
-  S = {ex, att, idx:0, ans:{...(att.answers||{})}, done:false, locked:false, fsOk:false, qLeft: ex.qTimer||0};
+  S = {ex, att, idx:0, ans:{...(att.answers||{})}, done:false, locked:false, fsOk:false};
   document.documentElement.requestFullscreen?.().then(()=>S.fsOk=true).catch(()=>{});
   arm();
   const wm=document.createElement('div');wm.id='wm';
   wm.style.backgroundImage=`url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='320' height='190'><text x='15' y='95' fill='rgba(15,23,42,0.06)' font-family='sans-serif' font-size='15' transform='rotate(-24 150 95)'>Itqan | ${att.name} - ${att.sid}</text></svg>`)}")`;
   document.body.appendChild(wm);
-
-  const goQ = (newIdx) => {
-    sync();
-    S.idx = newIdx;
-    S.qLeft = ex.qTimer || 0;
-    render();
-  };
 
   const render=()=>{
     document.body.classList.add('exam');
@@ -1083,64 +910,18 @@ function startExam(ex, att){
     if(q.type==='mcq'||q.type==='multi')inp=item.opts.map(oi=>`<button class="opt ${(q.type==='mcq'?a===oi:(a||[]).includes(oi))?'sel':''}" data-o="${oi}"><i>${q.type==='mcq'?'●':'✓'}</i><span>${esc(q.options[oi])}</span></button>`).join('');
     if(q.type==='tf')inp=[0,1].map(k=>`<button class="opt ${a===k?'sel':''}" data-o="${k}"><i>●</i><span>${k===0?'صح':'خطأ'}</span></button>`).join('');
     if(q.type==='short'||q.type==='essay')inp=`<textarea id="ta" placeholder="اكتب إجابتك هنا...">${esc(a||'')}</textarea>`;
-
-    const navDots = att.order.map((it, i) => {
-      const hasAns = S.ans[it.id] !== undefined && S.ans[it.id] !== '' && (!Array.isArray(S.ans[it.id]) || S.ans[it.id].length > 0);
-      return `<button class="q-dot ${i===S.idx?'cur':hasAns?'ans':''}" ${ex.allowBack&&!ex.qTimer?`data-jump="${i}"`:'disabled'}>${i+1}</button>`;
-    }).join('');
-
-    app.innerHTML=`<div class="card">
-      <div class="row between">
-        <div><b>${esc(ex.title)}</b><div class="mut">${esc(att.name)} (${esc(att.sid)})</div></div>
-        <div class="row">
-          ${ex.qTimer>0?`<span class="badge b-warn" id="qtm" style="font-size:14px">⏱️ السؤال: ${S.qLeft}ث</span>`:''}
-          <div class="timer-ring" id="tmRing" style="background:conic-gradient(#4f46e5 100%, var(--bd) 0%)"><span id="tm">--:--</span></div>
-        </div>
-      </div>
-      <div class="q-nav">${navDots}</div>
-    </div>
-    <div class="card">
-      <div class="row between"><span class="badge b-info">سؤال ${S.idx+1} من ${att.order.length}</span><span class="badge b-warn">${q.points} درجة</span></div>
-      ${q.img?`<div class="center" style="margin-top:12px"><img src="${esc(q.img)}" style="max-width:100%;max-height:260px;border-radius:14px;border:1px solid var(--bd)"></div>`:''}
-      <h2 style="margin:14px 0">${esc(q.text)}</h2>${inp}
-      <div class="row between" style="margin-top:18px">
-        ${ex.allowBack&&!ex.qTimer&&S.idx>0?'<button class="btn" id="pv">→ السابق</button>':'<span></span>'}
-        ${S.idx<att.order.length-1?'<button class="btn pri" id="nx">التالي ←</button>':'<button class="btn ok" id="sb">✔ تسليم الاختبار</button>'}
-      </div>
-    </div>`;
-
+    app.innerHTML=`<div class="card"><div class="row between"><div><b>${esc(ex.title)}</b><div class="mut">${esc(att.name)} (${esc(att.sid)})</div></div><div class="timer" id="tm">--:--</div></div><div class="bar" style="margin-top:10px"><div style="width:${(S.idx+1)/att.order.length*100}%"></div></div></div>
+    <div class="card"><div class="row between"><span class="badge b-info">سؤال ${S.idx+1} من ${att.order.length}</span><span class="badge b-warn">${q.points} درجة</span></div><h2 style="margin:14px 0">${esc(q.text)}</h2>${inp}
+      <div class="row between" style="margin-top:18px">${ex.allowBack&&S.idx>0?'<button class="btn" id="pv">→ السابق</button>':'<span></span>'}${S.idx<att.order.length-1?'<button class="btn pri" id="nx">التالي ←</button>':'<button class="btn ok" id="sb">✔ تسليم الاختبار</button>'}</div></div>`;
     app.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{const v=+b.dataset.o;if(q.type==='multi'){const c=new Set(S.ans[q.id]||[]);c.has(v)?c.delete(v):c.add(v);S.ans[q.id]=[...c]}else S.ans[q.id]=v;sync();render()});
-    app.querySelectorAll('[data-jump]').forEach(b=>b.onclick=()=>goQ(+b.dataset.jump));
     if($('#ta'))$('#ta').oninput=e=>{S.ans[q.id]=e.target.value};
-    if($('#pv'))$('#pv').onclick=()=>goQ(S.idx-1);
-    if($('#nx'))$('#nx').onclick=()=>goQ(S.idx+1);
+    if($('#pv'))$('#pv').onclick=()=>{sync();S.idx--;render()};
+    if($('#nx'))$('#nx').onclick=()=>{sync();S.idx++;render()};
     if($('#sb'))$('#sb').onclick=()=>{if(confirm('هل أنت متأكد من تسليم إجاباتك نهائياً؟'))submit()};
   };
   const sync = () => fb(`attempts/${ex.id}/${att.id}`, 'PATCH', {answers:S.ans}).catch(()=>{});
-  const totalSec = ex.duration * 60;
-  const endAt = att.startedAt + totalSec * 1000;
-
-  const tick = () => {
-    const left = Math.max(0, Math.floor((endAt - Date.now()) / 1000));
-    const el = $('#tm'), ring = $('#tmRing');
-    if(el && ring){
-      el.textContent = fmtTime(left);
-      const pct = Math.max(0, Math.min(100, (left / totalSec) * 100));
-      const clr = left < 60 ? '#ef4444' : pct < 30 ? '#f59e0b' : '#4f46e5';
-      ring.style.background = `conic-gradient(${clr} ${pct}%, var(--bd) ${pct}%)`;
-      ring.classList.toggle('low', left < 60);
-    }
-    if(ex.qTimer > 0 && !S.done){
-      S.qLeft--;
-      const qel = $('#qtm'); if(qel) qel.textContent = `⏱️ السؤال: ${Math.max(0,S.qLeft)}ث`;
-      if(S.qLeft <= 0){
-        if(S.idx < att.order.length - 1) goQ(S.idx + 1);
-        else submit();
-        return;
-      }
-    }
-    if(left <= 0 && !S.done) submit();
-  };
+  const endAt = att.startedAt + ex.duration*60000;
+  const tick = () => { const left=Math.max(0,Math.floor((endAt-Date.now())/1000)), el=$('#tm'); if(el){el.textContent=fmtTime(left);el.classList.toggle('low',left<60)} if(left<=0&&!S.done)submit(); };
   render(); tick(); loops.push(setInterval(tick,1000));
 }
 
@@ -1159,48 +940,16 @@ async function submit(){
   end('submitted', score, att.total);
 }
 
-function downloadCertificate(stName, sid, exTitle, sc, tot, gi){
-  const w = window.open('', '_blank', 'width=900,height=650');
-  const today = new Date().toLocaleDateString('ar-EG', {year:'numeric', month:'long', day:'numeric'});
-  w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>شهادة اجتياز - ${esc(stName)}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;800;900&display=swap" rel="stylesheet">
-  <style>body{font-family:'Cairo',sans-serif;background:#f1f5f9;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0}
-  .cert{width:820px;background:#fff;border:12px double #1e3a8a;border-radius:24px;padding:42px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.1)}
-  h1{color:#1e3a8a;font-size:32px;margin:8px 0}h2{color:#0ea5e9;font-size:26px;margin:14px 0}
-  .box{background:#f8fafc;border:1px solid #cbd5e1;border-radius:14px;padding:16px;margin:20px auto;max-width:520px;font-size:18px}
-  @media print{body{background:#fff}.no-p{display:none}}</style></head>
-  <body><div class="cert">
-    <div style="font-size:18px;font-weight:800;color:#4f46e5">منصة Itqan | إتقان للاختبارات الرقمية الذكية والآمنة</div>
-    <h1>🏅 شهادة اجتياز وتفوق</h1>
-    <p style="font-size:17px;color:#475569">تشهد إدارة المنصة بأن الطالب / الطالبة:</p>
-    <h2>${esc(stName)}</h2>
-    <p style="font-size:15px;color:#64748b">الرقم الجامعي / الجلوس: <b>${esc(sid)}</b></p>
-    <p style="font-size:17px;margin-top:14px">قد اجتاز بنجاح اختبار: <b>«${esc(exTitle)}»</b></p>
-    <div class="box">الدرجة المستحقة: <b>${sc} من ${tot}</b> (${gi.pct}%) — التقدير العام: <b style="color:#15803d">${gi.grade}</b></div>
-    <p style="font-size:14px;color:#64748b;margin-top:24px">تاريخ الإصدار: ${today} | نظام التقييم الآمن — إتقان</p>
-    <button class="no-p" onclick="window.print()" style="margin-top:18px;padding:10px 24px;background:#4f46e5;color:#fff;border:none;border-radius:10px;font-family:inherit;font-size:15px;cursor:pointer">🖨️ طباعة أو حفظ PDF</button>
-  </div></body></html>`);
-  w.document.close();
-}
-
 function end(st, sc, tot){
   clearLoops(); document.exitFullscreen?.().catch(()=>{});
   const gi = getGradeInfo(sc||0, tot||1);
-  if(st==='submitted' && gi.status==='ناجح' && typeof confetti==='function'){
-    confetti({particleCount:90, spread:70, origin:{y:0.6}});
-  }
-  show(`<div class="card center" style="max-width:500px;margin:4vh auto;padding:30px">
+  show(`<div class="card center" style="max-width:480px;margin:4vh auto;padding:30px">
     <div class="big">${st==='submitted'?'🎉':'🚫'}</div>
     <h2>${st==='submitted'?'تم تسليم الاختبار بنجاح':'تم قفل الاختبار بسبب مخالفة'}</h2>
     <p class="mut" style="margin:10px 0">${st==='submitted'?'تم حفظ إجاباتك في سجل المعلم بنجاح.':'تم رصد محاولة خروج أو تصوير للشاشة وإبلاغ المعلم فوراً.'}</p>
-    ${st==='submitted'&&S.ex.showScore?`<div class="card-soft" style="margin-top:16px">
-      <h3>درجتك: ${sc} من ${tot} (${gi.pct}%)</h3>
-      <span class="badge ${gi.cls}" style="font-size:15px;margin-top:6px">التقدير: ${gi.grade} — ${gi.status}</span>
-      ${gi.status==='ناجح'?`<div style="margin-top:14px"><button class="btn ok sm" id="certBtn">🏅 إصدار شهادة الاجتياز</button></div>`:''}
-    </div>`:''}
+    ${st==='submitted'&&S.ex.showScore?`<div class="card-soft" style="margin-top:16px"><h3>درجتك: ${sc} من ${tot} (${gi.pct}%)</h3><span class="badge ${gi.cls}" style="font-size:15px;margin-top:6px">التقدير: ${gi.grade} — ${gi.status}</span></div>`:''}
     <button class="btn pri" style="margin-top:20px" onclick="home()">العودة للرئيسية</button>
   </div>`, 'home');
-  if($('#certBtn')) $('#certBtn').onclick = () => downloadCertificate(S.att.name, S.att.sid, S.ex.title, sc, tot, gi);
 }
 
 async function violation(reason){
