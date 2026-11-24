@@ -46,6 +46,9 @@ body{
 .nav-pill{padding:8px 13px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid var(--bd);background:var(--card2);color:var(--tx);transition:.2s}
 .nav-pill:hover,.nav-pill.active{background:linear-gradient(135deg,var(--a),var(--b));color:#fff;border-color:transparent;box-shadow:0 4px 12px rgba(79,70,229,.25)}
 .nav-pill.root-pill{background:linear-gradient(135deg,#0f172a,#334155);color:#fbbf24;border-color:#475569}
+.announce-bar{background:linear-gradient(90deg,#4f46e5,#0ea5e9);color:#fff;padding:10px 18px;border-radius:14px;margin-bottom:14px;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 18px rgba(79,70,229,.22);text-align:center}
+.imp-bar{background:#fef3c7;color:#92400e;border:1px solid #f59e0b;padding:10px 18px;border-radius:14px;margin-bottom:14px;font-weight:800;font-size:13.5px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.policy-alert{background:linear-gradient(135deg,rgba(245,158,11,.12),rgba(14,165,233,.1));border:1px solid #f59e0b;border-radius:16px;padding:14px 18px;margin-bottom:16px;font-size:13.5px;line-height:1.7}
 .card{background:var(--card);border:1px solid var(--bd);border-radius:22px;padding:24px;margin-bottom:16px;box-shadow:0 10px 30px rgba(15,23,42,.05);transition:background .3s,border-color .3s}
 .card-soft{background:linear-gradient(135deg,var(--card),var(--card2));border:1px solid var(--bd);border-radius:18px;padding:18px;transition:.25s}
 .hero-portal{cursor:pointer;padding:28px;position:relative;overflow:hidden}
@@ -92,7 +95,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:11px 10px
 .chart-cnt{font-size:12px;font-weight:800;color:#0ea5e9;margin-bottom:4px}
 .chart-lbl{font-size:12px;color:var(--mut);margin-top:6px;font-weight:700}
 .modal{position:fixed;inset:0;background:rgba(15,23,42,.6);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:16px;z-index:60}
-.modal>div{background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:22px;padding:24px;max-width:700px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 20px 45px rgba(15,23,42,.25)}
+.modal>div{background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:22px;padding:24px;max-width:740px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 20px 45px rgba(15,23,42,.25)}
 .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:12px 24px;border-radius:14px;z-index:99;box-shadow:0 10px 30px rgba(15,23,42,.3);font-weight:700;max-width:92vw;text-align:center}
 .timer-ring{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;direction:ltr;position:relative}
 .timer-ring span{background:var(--card);width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center}
@@ -118,7 +121,7 @@ body.exam,body.exam *{-webkit-user-select:none;user-select:none}body.exam input,
 <div id="app"></div>
 <script>
 const firebaseConfig = {
-  apiKey: "AIzaSyAZRWQy_gNUxTjFCQNT0ZWD89AwQxoqSHc",
+  apiKey: "AIzaSyAZRWQy_gNUxTjFCQNT0ZWD89AwQxocSHc",
   authDomain: "test-9036f.firebaseapp.com",
   databaseURL: "https://test-9036f-default-rtdb.firebaseio.com",
   projectId: "test-9036f",
@@ -158,10 +161,17 @@ const normSid = s => String(s||'').trim().replace(/[٠-٩]/g, d => '٠١٢٣٤٥
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),4500)}
 
 let teacher = JSON.parse(localStorage.getItem('itqan_teacher')||'null');
-const isRoot = () => teacher && String(teacher.email||'').toLowerCase() === ROOT_EMAIL;
+let impTeacher = null;
+let sysCfg = {maintenance:false, announcement:''};
+
+const realIsRoot = () => teacher && String(teacher.email||'').toLowerCase() === ROOT_EMAIL;
+const isRoot = () => realIsRoot() && !impTeacher;
+const activeTeacher = () => impTeacher || teacher;
 
 function headerHtml(activeTab='home'){
   const isDk = document.body.classList.contains('dark');
+  const ann = sysCfg.announcement ? `<div class="announce-bar">📢 ${esc(sysCfg.announcement)}</div>` : '';
+  const imp = impTeacher ? `<div class="imp-bar"><span>👁️ وضع الدعم الفني: أنت تتصفح الآن حساب المعلم <b>${esc(impTeacher.name)}</b> (${esc(impTeacher.email)})</span><button class="btn bad sm" onclick="exitImpersonate()">🔙 العودة لحساب الروت</button></div>` : '';
   return `<div class="brand-bar">
     <div class="brand" style="cursor:pointer" onclick="home()">
       ${LOGO_SVG}
@@ -169,13 +179,13 @@ function headerHtml(activeTab='home'){
     </div>
     <div class="nav-tabs">
       <button class="nav-pill ${activeTab==='home'?'active':''}" onclick="home()">🏠 الرئيسية</button>
-      <button class="nav-pill ${activeTab==='teacher'?'active':''}" onclick="teacher?dash():tAuth()">👨‍🏫 بوابة المعلم</button>
+      <button class="nav-pill ${activeTab==='teacher'?'active':''}" onclick="activeTeacher()?dash():tAuth()">👨‍🏫 بوابة المعلم</button>
       <button class="nav-pill ${activeTab==='student'?'active':''}" onclick="sJoin()">🎓 بوابة الطالب</button>
       <button class="nav-pill ${activeTab==='creator'?'active':''}" onclick="aboutCreator()">✨ منشئ المنصة</button>
-      ${isRoot()?`<button class="nav-pill root-pill ${activeTab==='root'?'active':''}" onclick="rootPanel()">👑 إدارة النظام</button>`:''}
+      ${realIsRoot()?`<button class="nav-pill root-pill ${activeTab==='root'?'active':''}" onclick="exitImpersonate(true)">👑 إدارة النظام</button>`:''}
       <button class="nav-pill" id="dkBtn" onclick="toggleDark()" title="تبديل المظهر">${isDk?'☀️':'🌙'}</button>
     </div>
-  </div>`;
+  </div>${ann}${imp}`;
 }
 const footerHtml = `<div class="footer-bar">جميع الحقوق محفوظة © 2026 — منصة <b>Itqan | إتقان</b> للاختبارات الرقمية الآمنة</div>`;
 
@@ -183,6 +193,14 @@ function show(h, activeTab='home'){
   document.body.classList.remove('exam');
   $('#wm')?.remove();
   app.style.filter='none';
+  if(sysCfg.maintenance && !realIsRoot() && activeTab!=='teacher'){
+    app.innerHTML = headerHtml(activeTab) + `<div class="card center" style="padding:50px 20px;max-width:560px;margin:4vh auto">
+      <div class="big">🛠️</div>
+      <h1 style="margin:10px 0">المنصة في وضع الصيانة والتحديث</h1>
+      <p class="mut" style="font-size:15px">نقوم حالياً بإجراء تحديثات تقنية لتحسين جودة الخدمة وأمان الاختبارات. سنعود للعمل خلال دقائق قليلة.</p>
+    </div>` + footerHtml;
+    return;
+  }
   app.innerHTML = headerHtml(activeTab) + h + footerHtml;
 }
 
@@ -206,7 +224,13 @@ async function fb(path, method='GET', body=null){
 
 let loops = [], S = null;
 const clearLoops = () => { loops.forEach(clearInterval); loops=[]; };
-const saveT = t => { teacher = t; t ? localStorage.setItem('itqan_teacher', JSON.stringify(t)) : localStorage.removeItem('itqan_teacher'); };
+const saveT = t => { teacher = t; impTeacher = null; t ? localStorage.setItem('itqan_teacher', JSON.stringify(t)) : localStorage.removeItem('itqan_teacher'); };
+
+function exitImpersonate(goRoot=false){
+  impTeacher = null;
+  if(goRoot) rootPanel();
+  else dash();
+}
 
 /* ============== الصفحة الرئيسية المطورة ============== */
 function home(){
@@ -216,7 +240,7 @@ function home(){
     <h1>مرحباً بك في منصة <span style="color:#0ea5e9">Itqan | إتقان</span></h1>
     <p class="mut" style="max-width:600px;margin:10px auto 28px;font-size:15.5px">بيئة اختبارات رقمية عصرية وآمنة تجمع بين سهولة الاستخدام، منع الغش الفوري، والتحليل الإحصائي المتكامل لنتائج الطلاب.</p>
     <div class="grid2" style="max-width:740px;margin:0 auto">
-      <div class="card-soft hero-portal" onclick="teacher?dash():tAuth()">
+      <div class="card-soft hero-portal" onclick="activeTeacher()?dash():tAuth()">
         <div class="ico">👨‍🏫</div>
         <h2>بوابة المعلم</h2>
         <p class="mut">إنشاء الاختبارات، إدارة الجلسات الحية، رفع كشوف الطلاب، وتحليل الإحصائيات والرسوم البيانية</p>
@@ -362,9 +386,8 @@ function tAuth(mode='login'){
   };
 }
 
-/* ============== تصدير واستيراد الاختبار (HTML Backup) ============== */
-
- function exportExamHtml(ex){
+/* ============== تصدير واستيراد الاختبار وبنك الأسئلة (HTML Backup) ============== */
+function exportExamHtml(ex){
   if(!confirm('هل تريد حفظ نسخة من هذا الاختبار على جهازك؟')) return;
   const cleanEx = {...ex};
   delete cleanEx.owner; delete cleanEx.open; delete cleanEx.code; delete cleanEx.codeAt;
@@ -381,7 +404,7 @@ function tAuth(mode='login'){
   .box{background:#fff;padding:24px;border-radius:16px;border:1px solid #cbd5e1}h1{color:#1e3a8a}</style></head>
   <body><div class="box"><h1>📘 نسخة اختبار محفوظة — منصة Itqan | إتقان</h1>
   <p><b>عنوان الاختبار:</b> ${esc(ex.title)} | <b>المدة:</b> ${ex.duration} دقيقة | <b>عدد الأسئلة:</b> ${(ex.questions||[]).length}</p>
-  <p style="background:#e0f2fe;padding:10px;border-radius:8px;color:#0369a1">💡 يمكنك استعادة هذا الاختبار بالكامل في أي وقت داخل حسابك على منصة <b>Itqan</b> عبر زر <b>(📤 استيراد اختبار HTML)</b>.</p>
+  <p style="background:#e0f2fe;padding:10px;border-radius:8px;color:#0369a1">💡 يمكنك استعادة هذا الاختبار بالكامل في أي وقت داخل حسابك على منصة <b>Itqan</b> عبر زر <b>(📤 استيراد HTML)</b>.</p>
   <hr>${qPreview}</div>
   <script id="itqan-exam-data" type="application/json">${payload}<\/script>
   </body></html>`;
@@ -401,13 +424,59 @@ async function importExamHtml(file){
     if(!m) return toast('الملف المحدد لا يحتوي على بيانات اختبار صالحة من منصة Itqan');
     const parsed = JSON.parse(decodeURIComponent(escape(atob(m[1].trim()))));
     if(!parsed.title || !Array.isArray(parsed.questions)) return toast('بنية ملف الاختبار غير مكتملة');
+    const curT = activeTeacher();
     const newId = rid(6);
     const now = Date.now();
-    const restored = {...parsed, id:newId, owner:teacher.id, open:false, created:now, lastUsed:now};
+    const restored = {...parsed, id:newId, owner:curT.id, open:false, created:now, lastUsed:now};
     await fb(`exams/${newId}`, 'PUT', restored);
     toast(`تم استيراد الاختبار "${restored.title}" بنجاح!`);
     dash();
   }catch(e){ toast('تعذر استيراد الملف: ' + e.message); }
+}
+
+function exportQBankHtml(bankList, tName){
+  if(!bankList.length) return toast('بنك الأسئلة فارغ حالياً');
+  if(!confirm(`هل تريد حفظ نسخة احتياطية كاملة لبنك الأسئلة (${bankList.length} سؤال) على جهازك؟`)) return;
+  const payload = btoa(unescape(encodeURIComponent(JSON.stringify(bankList))));
+  const qPreview = bankList.map((q,i)=>`<div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:12px;padding:14px;margin:10px 0">
+    <b>س${i+1} (${q.points} درجة): ${esc(q.text)}</b>
+    ${q.options?`<ul>${q.options.map((o,idx)=>`<li>${esc(o)} ${(q.type==='mcq'?q.correct===idx:(q.correct||[]).includes(idx))?'✅':''}</li>`).join('')}</ul>`:''}
+    ${q.type==='tf'?`<p>الإجابة: <b>${q.correct===0?'صح':'خطأ'}</b></p>`:''}
+    ${q.type==='short'?`<p>الإجابة النموذجية: <b>${esc(q.correct)}</b></p>`:''}
+  </div>`).join('');
+
+  const htmlDoc = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>نسخة بنك الأسئلة - ${esc(tName)} - منصة Itqan</title>
+  <style>body{font-family:Tahoma,Arial,sans-serif;max-width:820px;margin:24px auto;padding:20px;background:#f1f5f9;color:#0f172a}
+  .box{background:#fff;padding:24px;border-radius:16px;border:1px solid #cbd5e1}h1{color:#1e3a8a}</style></head>
+  <body><div class="box"><h1>📚 نسخة احتياطية لبنك الأسئلة الشخصي — منصة Itqan | إتقان</h1>
+  <p><b>المعلم:</b> ${esc(tName)} | <b>إجمالي الأسئلة المحفوظة:</b> ${bankList.length} سؤال</p>
+  <p style="background:#dcfce7;padding:10px;border-radius:8px;color:#15803d">💡 يمكنك استعادة جميع هذه الأسئلة في أي وقت داخل بنك الأسئلة على منصة <b>Itqan</b> عبر زر <b>(📤 استيراد للبنك)</b>.</p>
+  <hr>${qPreview}</div>
+  <script id="itqan-qbank-data" type="application/json">${payload}<\/script>
+  </body></html>`;
+
+  const blob = new Blob([htmlDoc], {type:'text/html;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `Itqan_QBank_Backup_${new Date().toISOString().slice(0,10)}.html`;
+  a.click();
+  toast(`تم تنزيل نسخة بنك الأسئلة (${bankList.length} سؤال) على جهازك بنجاح`);
+}
+
+async function importQBankHtml(file, teacherId){
+  try{
+    const txt = await file.text();
+    const m = txt.match(/<script id="itqan-qbank-data" type="application\/json">([\s\S]*?)<\/script>/);
+    if(!m) return toast('الملف المحدد لا يحتوي على بيانات بنك أسئلة صالحة من منصة Itqan');
+    const parsedList = JSON.parse(decodeURIComponent(escape(atob(m[1].trim()))));
+    if(!Array.isArray(parsedList) || !parsedList.length) return toast('ملف بنك الأسئلة فارغ أو غير صالح');
+    for(const q of parsedList){
+      const bid = rid(6);
+      await fb(`qbank/${teacherId}/${bid}`, 'PUT', {...q, id:bid});
+    }
+    toast(`تم استيراد ${parsedList.length} سؤال إلى بنك الأسئلة الشخصي بنجاح!`);
+    return true;
+  }catch(e){ toast('تعذر استيراد بنك الأسئلة: ' + e.message); return false; }
 }
 
 /* ============== معاينة الاختبار كطالب ============== */
@@ -445,16 +514,18 @@ async function previewExam(id){
 /* ============== لوحة تحكم المعلم + البحث والتصفية + الأرشفة ============== */
 async function dash(){
   clearLoops();
+  const curT = activeTeacher();
+  if(!curT) return tAuth();
   show('<div class="card center mut">جاري تحميل اختباراتك والتحقق من الأرشفة التلقائية...</div>', 'teacher');
   
-  const dbT = await fb(`teachers/${teacher.id}`).catch(()=>null);
-  if(dbT && dbT.banned){
+  const dbT = await fb(`teachers/${curT.id}`).catch(()=>null);
+  if(dbT && dbT.banned && !realIsRoot()){
     await auth.signOut().catch(()=>{}); saveT(null);
     return show('<div class="card center" style="padding:40px"><div class="big">🚫</div><h2>تم إيقاف هذا الحساب من قِبل إدارة المنصة</h2></div>', 'home');
   }
 
   const all = await fb('exams') || {};
-  const myExams = Object.values(all).filter(x => x && x.owner === teacher.id);
+  const myExams = Object.values(all).filter(x => x && x.owner === curT.id);
   const now = Date.now();
   let autoDeletedCount = 0;
 
@@ -469,7 +540,7 @@ async function dash(){
       activeList.push(e);
     }
   }
-  if(autoDeletedCount > 0) toast(`تنبيه الصيانة التلقائية: تم حذف ${autoDeletedCount} اختبار قديم مرّ عليه أكثر من 5 أشهر دون استخدام.`);
+  if(autoDeletedCount > 0) toast(`تنبيه الصيانة التلقائية: تم حذف ${autoDeletedCount} اختبار قديم مرّ عليه أكثر من 5 أشهر دون استخدام (أسئلتك المحفوظة في بنك الأسئلة ما زالت آمنة).`);
 
   const list = activeList.sort((a,b)=>(b.lastUsed||b.created||0)-(a.lastUsed||a.created||0));
   let qFilter = '', statusFilter = 'all';
@@ -482,7 +553,7 @@ async function dash(){
     });
 
     show(`<div class="card"><div class="row between">
-      <div><h1>أهلاً بك، ${esc(teacher.name)}</h1><span class="mut">${esc(teacher.email)}</span></div>
+      <div><h1>أهلاً بك، ${esc(curT.name)}</h1><span class="mut">${esc(curT.email)}</span></div>
       <div class="row">
         <button class="btn pri" id="nw">＋ إنشاء اختبار جديد</button>
         <label class="btn" style="margin:0;cursor:pointer">📤 استيراد HTML<input type="file" id="impF" accept=".html,.htm" style="display:none"></label>
@@ -511,8 +582,7 @@ async function dash(){
         <button class="btn sm" onclick="results('${e.id}')">📊 الإحصائيات</button>
         <button class="btn sm" onclick="previewExam('${e.id}')">👁️ معاينة</button>
         <button class="btn sm" onclick="builder('${e.id}')">✏️ تعديل</button>
-      
-       <button class="btn sm" data-exp="${e.id}">📥 HTML</button>
+        <button class="btn sm" data-exp="${e.id}">📥 HTML</button>
         <button class="btn bad sm" onclick="delEx('${e.id}')">🗑️</button>
       </div></div></div>`).join(''):'<div class="card center mut" style="padding:40px">لا توجد اختبارات مطابقة للبحث الحالي.</div>'}</div>`, 'teacher');
 
@@ -520,7 +590,21 @@ async function dash(){
       const ex = list.find(x => x.id === b.dataset.exp);
       if(ex) exportExamHtml(ex);
     });
-    $('#nw').onclick=()=>builder();
+    $('#nw').onclick=()=>{
+      const m = document.createElement('div'); m.className='modal';
+      m.innerHTML = `<div style="max-width:520px;text-align:center">
+        <div style="font-size:46px;margin-bottom:8px">💡</div>
+        <h2 style="margin-bottom:10px">تنبيه هام قبل إنشاء الاختبار</h2>
+        <div style="background:var(--card2);border:1px solid var(--bd);border-radius:14px;padding:16px;text-align:right;font-size:14.5px;line-height:1.8;margin-bottom:18px">
+          <p>⏳ <b>سياسة الاحتفاظ بالاختبارات:</b> أي اختبار يتم إنشاؤه ولا يُستخدم لفترة تتجاوز <b>5 أشهر (150 يوماً)</b> يتم حذفه تلقائياً للحفاظ على كفاءة المنصة.</p>
+          <p style="margin-top:8px">📥 <b>نصيحتنا لك:</b> بعد الانتهاء من إعداد الاختبار، ننصحك بعمل <b>تصدير (📥 HTML)</b> لحفظ نسخة احتياطية دائمة على جهازك يمكنك استيرادها في أي وقت.</p>
+          <p style="margin-top:8px;color:#15803d">⭐ <b>بنك الأسئلة محمي:</b> أي سؤال تحفظه في <b>بنك الأسئلة الشخصي</b> يظل محفوظاً في حسابك للأبد ولن يُحذف حتى لو حُذف الاختبار، كما يمكنك تصدير البنك بالكامل على جهازك.</p>
+        </div>
+        <button class="btn pri" id="goBld" style="width:100%;padding:12px">فهمت ذلك، المتابعة لإنشاء الاختبار ←</button>
+      </div>`;
+      document.body.appendChild(m);
+      $('#goBld').onclick = () => { m.remove(); builder(); };
+    };
     $('#impF').onchange=e=>{ if(e.target.files[0]) importExamHtml(e.target.files[0]); };
     $('#out').onclick=async()=>{await auth.signOut().catch(()=>{});saveT(null);home()};
     $('#srch').oninput=e=>{ qFilter=e.target.value.trim().toLowerCase(); renderDash(); $('#srch').focus(); };
@@ -529,11 +613,18 @@ async function dash(){
   renderDash();
 }
 
-async function delEx(id){if(!confirm('هل تريد حذف الاختبار وجميع نتائجه نهائياً؟'))return;await fb(`exams/${id}`,'DELETE');await fb(`attempts/${id}`,'DELETE');toast('تم الحذف');dash();}
+async function delEx(id){
+  if(!confirm('هل تريد حذف هذا الاختبار ونتائجه نهائياً؟\n(ملاحظة: الأسئلة التي قمت بحفظها في بنك الأسئلة الشخصي ستبقى محفوظة ولن تُحذف)')) return;
+  await fb(`exams/${id}`,'DELETE');
+  await fb(`attempts/${id}`,'DELETE');
+  toast('تم حذف الاختبار (بنك الأسئلة الشخصي محفوظ بأمان)');
+  dash();
+}
 
 /* ============== منشئ الاختبار + بنك الأسئلة + مؤقت السؤال + كشف الطلاب ============== */
 const QT={mcq:'اختيار من متعدد',multi:'متعدد الإجابات',tf:'صح / خطأ',short:'إجابة قصيرة',essay:'مقالي'};
 async function builder(id){
+  const curT = activeTeacher();
   let M = id ? await fb(`exams/${id}`) : {title:'',desc:'',duration:30,qTimer:0,shuffleQ:true,shuffleO:true,allowBack:false,showScore:false,rotate:45,restrictStudents:false,allowedList:[],questions:[]};
   M.questions = M.questions || [];
   M.allowedList = M.allowedList || [];
@@ -590,32 +681,58 @@ async function builder(id){
   };
 
   const openBankModal = async () => {
-    const bankObj = await fb(`qbank/${teacher.id}`) || {};
+    const bankObj = await fb(`qbank/${curT.id}`) || {};
     const bankList = Object.values(bankObj);
     const m = document.createElement('div'); m.className='modal';
-    m.innerHTML = `<div><div class="row between"><h2>📚 بنك الأسئلة الشخصي (${bankList.length})</h2><button class="btn sm" id="clB">✕</button></div>
-      <p class="mut" style="margin-bottom:12px">اختر الأسئلة لإضافتها مباشرة إلى هذا الاختبار:</p>
+    m.innerHTML = `<div>
+      <div class="row between" style="margin-bottom:8px">
+        <h2>📚 بنك الأسئلة الشخصي (${bankList.length})</h2>
+        <button class="btn sm" id="clB">✕</button>
+      </div>
+      <div class="row between" style="background:var(--card2);padding:10px 14px;border-radius:12px;border:1px solid var(--bd);margin-bottom:12px">
+        <span class="mut" style="font-size:13px">احتفظ بنسخة احتياطية كاملة لبنك أسئلتك على جهازك:</span>
+        <div class="row">
+          ${bankList.length ? `<button class="btn ok sm" id="impAllB">⚡ إضافة الكل للاختبار</button>` : ''}
+          ${bankList.length ? `<button class="btn sm" id="expBankBtn">📥 تصدير البنك</button>` : ''}
+          <label class="btn pri sm" style="margin:0;cursor:pointer">📤 استيراد للبنك<input type="file" id="impBankFile" accept=".html,.htm" style="display:none"></label>
+        </div>
+      </div>
       ${bankList.length ? bankList.map((bq,i)=>`<div class="qc row between">
-        <div style="max-width:75%"><b>${esc(bq.text)}</b><div class="mut">${QT[bq.type]} | ${bq.points} درجة</div></div>
+        <div style="max-width:74%"><b>${esc(bq.text)}</b><div class="mut">${QT[bq.type]} | ${bq.points} درجة</div></div>
         <div class="row">
           <button class="btn pri sm" data-impb="${i}">＋ إضافة</button>
           <button class="btn bad sm" data-delb="${bq.id}">🗑️</button>
         </div>
-      </div>`).join('') : '<p class="mut center" style="padding:20px">بنك الأسئلة فارغ حالياً. يمكنك حفظ أي سؤال بالضغط على زر (⭐ حفظ في البنك) بجانب السؤال.</p>'}
+      </div>`).join('') : '<p class="mut center" style="padding:24px">بنك الأسئلة فارغ حالياً. يمكنك حفظ أي سؤال بالضغط على زر (⭐ حفظ بالبنك) بجانب السؤال، أو استيراد ملف بنك أسئلة محفوظ مسبقاً.</p>'}
     </div>`;
     document.body.appendChild(m);
     $('#clB').onclick=()=>m.remove();
+    if($('#expBankBtn')) $('#expBankBtn').onclick = () => exportQBankHtml(bankList, curT.name);
+    if($('#impAllB')) $('#impAllB').onclick = () => {
+      bankList.forEach(bq => M.questions.push({...bq, id:rid(4)}));
+      toast(`تم إضافة جميع أسئلة البنك (${bankList.length} سؤال) إلى الاختبار!`);
+      m.remove(); draw();
+    };
+    $('#impBankFile').onchange = async e => {
+      if(e.target.files[0]){
+        const ok = await importQBankHtml(e.target.files[0], curT.id);
+        if(ok){ m.remove(); openBankModal(); }
+      }
+    };
     m.querySelectorAll('[data-impb]').forEach(b=>b.onclick=()=>{
       const item = {...bankList[+b.dataset.impb], id:rid(4)};
       M.questions.push(item); toast('تم استيراد السؤال للاختبار'); m.remove(); draw();
     });
     m.querySelectorAll('[data-delb]').forEach(b=>b.onclick=async()=>{
-      await fb(`qbank/${teacher.id}/${b.dataset.delb}`, 'DELETE'); toast('تم الحذف من البنك'); m.remove(); openBankModal();
+      await fb(`qbank/${curT.id}/${b.dataset.delb}`, 'DELETE'); toast('تم الحذف من البنك'); m.remove(); openBankModal();
     });
   };
 
   const draw=()=>{
     show(`<div class="row between" style="margin-bottom:12px"><h1>${id?'✏️ تعديل الاختبار':'🆕 إنشاء اختبار جديد'}</h1><button class="btn" id="bk">→ رجوع</button></div>
+    <div class="policy-alert">
+      ⏳ <b>تنبيه هام:</b> أي اختبار لا يتم استخدامه لمدة تتجاوز <b>5 أشهر</b> يُحذف تلقائياً؛ لذا ننصحك دائماً بعمل <b>تصدير (📥 HTML)</b> لحفظ نسخة على جهازك. أما الأسئلة المحفوظة في <b>بنك الأسئلة الشخصي (⭐)</b> فتبقى محفوظة لديك دائماً ويمكنك تصدير البنك بالكامل كنسخة احتياطية.
+    </div>
     <div class="card"><label>عنوان الاختبار</label><input data-f="title" value="${esc(M.title)}" placeholder="مثال: اختبار منتصف الفصل - نظم التشغيل"><label>تعليمات للطلاب (اختياري)</label><textarea data-f="desc" style="min-height:60px">${esc(M.desc)}</textarea>
       <div class="grid3">
         <div style="margin-top:8px"><label>المدة الكلية للاختبار (دقائق)</label><input type="number" min="1" data-f="duration" value="${M.duration}"></div>
@@ -645,7 +762,7 @@ async function builder(id){
     ${M.questions.map((q,i)=>qCard(q,i)).join('')}
     <div class="card row between">
       <div><b>＋ إضافة سؤال جديد:</b><div class="row" style="margin-top:10px">${Object.entries(QT).map(([k,v])=>`<button class="btn sm" data-add="${k}">${v}</button>`).join('')}</div></div>
-      <button class="btn pri sm" id="opBank">📚 استيراد من بنك الأسئلة</button>
+      <button class="btn pri sm" id="opBank">📚 بنك الأسئلة (استيراد / تصدير)</button>
     </div>
     <button class="btn pri" id="sv" style="width:100%;font-size:18px;padding:14px">💾 حفظ الاختبار</button>`, 'teacher');
     
@@ -660,9 +777,10 @@ async function builder(id){
         if(M.restrictStudents && !M.allowedList.length) throw new Error('فعّلت خيار تقييد الدخول، يرجى رفع ملف Excel أو Word بأسماء وأرقام الطلاب أولاً');
         const eid = id || rid(6);
         const now = Date.now();
-        const data = {...M, id:eid, owner:teacher.id, open:M.open||false, created:M.created||now, lastUsed:now};
+        const data = {...M, id:eid, owner:M.owner||curT.id, open:M.open||false, created:M.created||now, lastUsed:now};
         await fb(`exams/${eid}`, 'PUT', data);
-        toast('تم حفظ الاختبار بنجاح');dash();
+        toast('تم حفظ الاختبار بنجاح — ننصحك بعمل تصدير HTML لحفظ نسخة احتياطية على جهازك');
+        dash();
       }catch(e){toast(e.message)}
     };
   };
@@ -671,7 +789,7 @@ async function builder(id){
     if(q.type==='mcq'||q.type==='multi')ed=q.options.map((o,k)=>`<div class="row" style="margin:6px 0;flex-wrap:nowrap"><input type="${q.type==='mcq'?'radio':'checkbox'}" name="c${i}" style="width:auto;margin:0" data-ok="${i}:${k}" ${(q.type==='mcq'?q.correct===k:q.correct.includes(k))?'checked':''}><input data-op="${i}:${k}" value="${esc(o)}" placeholder="الخيار ${k+1}">${q.options.length>2?`<button class="btn bad sm" data-ro="${i}:${k}">✕</button>`:''}</div>`).join('')+`<button class="btn sm" data-ao="${i}">＋ إضافة خيار</button>`;
     if(q.type==='tf')ed=`<div class="row" style="margin-top:8px">${['صح','خطأ'].map((l,k)=>`<label class="row" style="margin:0"><input type="radio" name="tf${i}" style="width:auto;margin:0" data-ok="${i}:${k}" ${q.correct===k?'checked':''}> ${l}</label>`).join('')}</div>`;
     if(q.type==='short')ed=`<label>الإجابة النموذجية الصحيحة</label><input data-sh="${i}" value="${esc(q.correct)}">`;
-    return `<div class="qc"><div class="row between"><b>سؤال ${i+1} <span class="badge b-info">${QT[q.type]}</span></b><div class="row"><label style="margin:0">الدرجة</label><input type="number" min="1" style="width:68px;margin:0" data-pt="${i}" value="${q.points}"><button class="btn sm" data-svb="${i}" title="حفظ في بنك الأسئلة">⭐ حفظ بالبنك</button>${i?`<button class="btn sm" data-mv="${i}:-1">↑</button>`:''}${i<M.questions.length-1?`<button class="btn sm" data-mv="${i}:1">↓</button>`:''}<button class="btn bad sm" data-dq="${i}">حذف</button></div></div>
+    return `<div class="qc"><div class="row between"><b>سؤال ${i+1} <span class="badge b-info">${QT[q.type]}</span></b><div class="row"><label style="margin:0">الدرجة</label><input type="number" min="1" style="width:68px;margin:0" data-pt="${i}" value="${q.points}"><button class="btn sm" data-svb="${i}" title="حفظ في بنك الأسئلة الشخصي الدائم">⭐ حفظ بالبنك</button>${i?`<button class="btn sm" data-mv="${i}:-1">↑</button>`:''}${i<M.questions.length-1?`<button class="btn sm" data-mv="${i}:1">↓</button>`:''}<button class="btn bad sm" data-dq="${i}">حذف</button></div></div>
     <textarea data-qt="${i}" placeholder="اكتب نص السؤال هنا..." style="min-height:60px">${esc(q.text)}</textarea>
     <input data-qi="${i}" value="${esc(q.img||'')}" placeholder="🖼️ رابط صورة توضيحية للسؤال (اختياري)..." style="font-size:13px;padding:8px 12px">
     ${ed}</div>`;
@@ -684,7 +802,7 @@ async function builder(id){
     if(d.ro){const[i,k]=d.ro.split(':').map(Number),q=M.questions[i];q.options.splice(k,1);if(q.type==='mcq'&&q.correct>=q.options.length)q.correct=0;draw()}
     if(d.dq!==undefined){M.questions.splice(+d.dq,1);draw()}
     if(d.mv){const[i,s]=d.mv.split(':').map(Number);[M.questions[i],M.questions[i+s]]=[M.questions[i+s],M.questions[i]];draw()}
-    if(d.svb!==undefined){const q=M.questions[+d.svb];if(!q.text.trim())return toast('اكتب نص السؤال أولاً');const bid=rid(6);await fb(`qbank/${teacher.id}/${bid}`,'PUT',{...q,id:bid});toast('⭐ تم حفظ السؤال في بنك الأسئلة الشخصي');}
+    if(d.svb!==undefined){const q=M.questions[+d.svb];if(!q.text.trim())return toast('اكتب نص السؤال أولاً');const bid=rid(6);await fb(`qbank/${curT.id}/${bid}`,'PUT',{...q,id:bid});toast('⭐ تم حفظ السؤال في بنك الأسئلة الشخصي الدائم (لن يُحذف بحذف الاختبار)');}
   };
   draw();
 }
@@ -769,14 +887,12 @@ async function results(id){
   const lowestRanked = [...scoredAtts].sort((a,b) => (Number(a.score??0) - Number(b.score??0)) || (getDuration(b) - getDuration(a)));
   const lastStudent = lowestRanked[0] ? `${lowestRanked[0].name} (${Number(lowestRanked[0].score??0)}/${totalPts})` : 'لا يوجد';
 
-  // حساب توزيع التقديرات للمخطط الدائري
   const gDist = {ممتاز:0, 'جيد جداً':0, جيد:0, مقبول:0, ضعيف:0};
   scoredAtts.forEach(a => { const gi = getGradeInfo(a.score||0, a.total||totalPts); gDist[gi.grade]++; });
   const totG = Math.max(count, 1);
   const p1 = (gDist['ممتاز']/totG)*100, p2 = p1+(gDist['جيد جداً']/totG)*100, p3 = p2+(gDist['جيد']/totG)*100, p4 = p3+(gDist['مقبول']/totG)*100;
   const donutGrad = count ? `conic-gradient(#10b981 0% ${p1}%, #0ea5e9 ${p1}% ${p2}%, #8b5cf6 ${p2}% ${p3}%, #f59e0b ${p3}% ${p4}%, #ef4444 ${p4}% 100%)` : 'conic-gradient(#cbd5e1 0% 100%)';
 
-  // حساب الغائبين (في حال تفعيل قائمة الطلاب)
   let absentees = [];
   if(ex.restrictStudents && Array.isArray(ex.allowedList)){
     const attendedSids = new Set(atts.map(a => normSid(a.sid)));
@@ -904,17 +1020,20 @@ async function results(id){
 }
 const fmtAns=(q,v)=>v===undefined||v===null||v===''?'لم يجب':q.type==='mcq'?q.options[v]:q.type==='multi'?(v||[]).map(i=>q.options[i]).join('، '):q.type==='tf'?(v===0?'صح':'خطأ'):v;
 
-/* ============== لوحة تحكم الأدمن / الروت السرية ============== */
+/* ============== لوحة تحكم الأدمن / الروت المتقدمة ============== */
 async function rootPanel(){
-  if(!isRoot()){ toast('⛔ صلاحية مرفوضة'); return home(); }
+  if(!realIsRoot()){ toast('⛔ صلاحية مرفوضة'); return home(); }
+  impTeacher = null;
   clearLoops();
   show('<div class="card center mut">👑 جاري تحميل بيانات النظام الشاملة...</div>', 'root');
 
-  const [teachersObj, examsObj, attemptsObj] = await Promise.all([
+  const [teachersObj, examsObj, attemptsObj, cfgObj] = await Promise.all([
     fb('teachers').catch(()=>({})),
     fb('exams').catch(()=>({})),
-    fb('attempts').catch(()=>({}))
+    fb('attempts').catch(()=>({})),
+    fb('sysConfig').catch(()=>({}))
   ]);
+  sysCfg = {maintenance:!!cfgObj?.maintenance, announcement:cfgObj?.announcement||''};
 
   const teachersList = Object.values(teachersObj || {});
   const examsList = Object.values(examsObj || {});
@@ -923,23 +1042,46 @@ async function rootPanel(){
 
   show(`<div class="card" style="background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;border:none">
     <div class="row between">
-      <div><span class="badge" style="background:#fbbf24;color:#0f172a">صلاحيات الروت العليا (ROOT)</span><h1 style="color:#fff;margin-top:6px">👑 لوحة التحكم الشاملة — منصة Itqan</h1><span style="color:#94a3b8;font-size:13px">مرحباً بك يا الباهي — تحكم كامل في المعلمين والاختبارات وحماية المنصة</span></div>
-      <button class="btn sm" onclick="dash()">العودة للوحة المعلم</button>
+      <div><span class="badge" style="background:#fbbf24;color:#0f172a">صلاحيات الروت العليا (ROOT)</span><h1 style="color:#fff;margin-top:6px">👑 لوحة التحكم الشاملة — منصة Itqan</h1><span style="color:#94a3b8;font-size:13px">مرحباً بك يا الباهي — تحكم كامل في النظام، الدعم الفني، الصيانة، والإعلانات</span></div>
+      <div class="row">
+        <button class="btn ok sm" id="fullBkBtn">💾 نسخة احتياطية كاملة (JSON)</button>
+        <button class="btn sm" onclick="dash()">العودة للوحة المعلم</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid2" style="margin-bottom:16px">
+    <div class="card" style="margin:0">
+      <h2>🛠️ وضع الصيانة الشامل (Maintenance Mode)</h2>
+      <p class="mut" style="margin-bottom:12px">عند التفعيل، تُغلق المنصة مؤقتاً أمام المعلمين والطلاب برسالة صيانة وتبقى مفتوحة لحسابك فقط.</p>
+      <div class="row between">
+        <span class="badge ${sysCfg.maintenance?'b-bad':'b-ok'}">${sysCfg.maintenance?'🔴 وضع الصيانة مفعّل حالياً':'🟢 المنصة تعمل بشكل طبيعي'}</span>
+        <button class="btn ${sysCfg.maintenance?'ok':'bad'} sm" id="mntBtn">${sysCfg.maintenance?'▶️ إيقاف وضع الصيانة':'⏸️ تفعيل وضع الصيانة'}</button>
+      </div>
+    </div>
+    <div class="card" style="margin:0">
+      <h2>📢 شريط الإعلانات العام للمنصة</h2>
+      <p class="mut" style="margin-bottom:8px">اكتب إعلاناً أو تنبيهاً ليظهر أعلى المنصة لجميع المستخدمين:</p>
+      <div class="row" style="flex-wrap:nowrap">
+        <input id="annInp" value="${esc(sysCfg.announcement)}" placeholder="مثال: تحديث جديد متاح الآن..." style="margin:0">
+        <button class="btn pri sm" id="annSave">نشر</button>
+        ${sysCfg.announcement?'<button class="btn bad sm" id="annClr">مسح</button>':''}
+      </div>
     </div>
   </div>
 
   <div class="grid4" style="margin-bottom:16px">
     <div class="stat-box"><div class="mut">إجمالي المعلمين</div><div class="stat-val">${teachersList.length}</div><div class="mut">حساب مسجل</div></div>
     <div class="stat-box"><div class="mut">إجمالي الاختبارات</div><div class="stat-val">${examsList.length}</div><div class="mut">اختبار على المنصة</div></div>
-    <div class="stat-box"><div class="mut">الاختبارات المفتوحة الآن</div><div class="stat-val">${examsList.filter(e=>e.open).length}</div><div class="mut">جلسة حية نشطة</div></div>
+    <div class="stat-box"><div class="mut">الجلسات المفتوحة الآن</div><div class="stat-val">${examsList.filter(e=>e.open).length}</div><div class="mut">جلسة حية نشطة</div></div>
     <div class="stat-box"><div class="mut">إجمالي محاولات الطلاب</div><div class="stat-val">${totalAttempts}</div><div class="mut">مختبر مسجل</div></div>
   </div>
 
   <div class="card">
-    <h2>👨‍🏫 إدارة حسابات المعلمين (${teachersList.length})</h2>
+    <h2>👨‍🏫 إدارة حسابات المعلمين والدعم الفني (${teachersList.length})</h2>
     <div class="table-wrap">
       <table>
-        <tr><th>اسم المعلم</th><th>البريد الإلكتروني</th><th>عدد الاختبارات</th><th>الحالة</th><th>إجراءات التحكم والدعم</th></tr>
+        <tr><th>اسم المعلم</th><th>البريد الإلكتروني</th><th>الاختبارات</th><th>الحالة</th><th>إجراءات التحكم والدعم</th></tr>
         ${teachersList.map(t => {
           const tExams = examsList.filter(e => e.owner === t.id);
           const isMe = String(t.email||'').toLowerCase() === ROOT_EMAIL;
@@ -949,8 +1091,9 @@ async function rootPanel(){
             <td>${tExams.length} اختبار</td>
             <td><span class="badge ${t.banned?'b-bad':'b-ok'}">${t.banned?'محظور':'نشط'}</span></td>
             <td class="row">
-              <button class="btn sm" onclick="rootInspectTeacher('${t.id}')">👁️ معاينة الاختبارات</button>
-              ${!isMe ? `<button class="btn ${t.banned?'ok':'bad'} sm" onclick="rootToggleBan('${t.id}', ${!t.banned})">${t.banned?'🔓 فك الحظر':'🚫 حظر الحساب'}</button>` : ''}
+              ${!isMe ? `<button class="btn pri sm" onclick="rootLoginAs('${t.id}')">🔑 الدخول كمعلم</button>` : ''}
+              <button class="btn sm" onclick="rootInspectTeacher('${t.id}')">👁️ الاختبارات</button>
+              ${!isMe ? `<button class="btn ${t.banned?'ok':'bad'} sm" onclick="rootToggleBan('${t.id}', ${!t.banned})">${t.banned?'🔓 فك الحظر':'🚫 حظر'}</button>` : ''}
             </td>
           </tr>`;
         }).join('')}
@@ -969,9 +1112,10 @@ async function rootPanel(){
           return `<tr>
             <td><b>${esc(e.title)}</b></td>
             <td>${esc(owner?.name || 'غير معروف')}</td>
-            <td><span class="badge ${e.open?'b-ok':'b-warn'}">${e.open?'مفتوح':'مغلق'}</span></td>
+            <td><span class="badge ${e.open?'b-ok':'b-warn'}">${e.open?'🟢 مفتوح':'مغلق'}</span></td>
             <td>${attCnt} طالب</td>
             <td class="row">
+              ${e.open ? `<button class="btn warn sm" onclick="rootForceClose('${e.id}')">🛑 إغلاق طوارئ</button>` : ''}
               <button class="btn sm" onclick="results('${e.id}')">📊 النتائج</button>
               <button class="btn bad sm" onclick="rootDelExam('${e.id}')">🗑️ حذف</button>
             </td>
@@ -980,10 +1124,58 @@ async function rootPanel(){
       </table>
     </div>
   </div>`, 'root');
+
+  $('#mntBtn').onclick = async () => {
+    const nextState = !sysCfg.maintenance;
+    await fb('sysConfig', 'PATCH', {maintenance: nextState});
+    sysCfg.maintenance = nextState;
+    toast(nextState ? 'تم تفعيل وضع الصيانة الشامل' : 'تم إيقاف وضع الصيانة وإعادة فتح المنصة');
+    rootPanel();
+  };
+  $('#annSave').onclick = async () => {
+    const txt = $('#annInp').value.trim();
+    await fb('sysConfig', 'PATCH', {announcement: txt});
+    sysCfg.announcement = txt;
+    toast('تم نشر الإعلان العام بنجاح');
+    rootPanel();
+  };
+  if($('#annClr')) $('#annClr').onclick = async () => {
+    await fb('sysConfig', 'PATCH', {announcement: ''});
+    sysCfg.announcement = '';
+    toast('تم مسح الإعلان');
+    rootPanel();
+  };
+  $('#fullBkBtn').onclick = async () => {
+    toast('جاري تجهيز النسخة الاحتياطية الكاملة...');
+    const fullData = await fb('');
+    const blob = new Blob([JSON.stringify(fullData, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `Itqan_Full_Backup_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    toast('تم تنزيل النسخة الاحتياطية الكاملة لقاعدة البيانات بنجاح');
+  };
+}
+
+async function rootLoginAs(tid){
+  if(!realIsRoot()) return;
+  const t = await fb(`teachers/${tid}`);
+  if(!t) return toast('تعذر العثور على بيانات المعلم');
+  impTeacher = {id: t.id, name: t.name, email: t.email};
+  toast(`تم الدخول بوضع الدعم الفني إلى حساب: ${t.name}`);
+  dash();
+}
+
+async function rootForceClose(eid){
+  if(!realIsRoot()) return;
+  if(!confirm('هل تريد إغلاق هذه الجلسة الحية فوراً ومنع دخول أي طالب جديد؟')) return;
+  await fb(`exams/${eid}`, 'PATCH', {open: false});
+  toast('🛑 تم إغلاق الجلسة الحية فوراً');
+  rootPanel();
 }
 
 async function rootToggleBan(tid, banState){
-  if(!isRoot()) return;
+  if(!realIsRoot()) return;
   if(!confirm(banState ? 'هل تريد حظر هذا المعلم ومنعه من الدخول للمنصة؟' : 'هل تريد فك الحظر عن هذا المعلم؟')) return;
   await fb(`teachers/${tid}`, 'PATCH', {banned: banState});
   toast(banState ? 'تم حظر الحساب بنجاح' : 'تم فك الحظر وتفعيل الحساب');
@@ -991,8 +1183,8 @@ async function rootToggleBan(tid, banState){
 }
 
 async function rootDelExam(eid){
-  if(!isRoot()) return;
-  if(!confirm('حذف هذا الاختبار ونتائجه نهائياً من قاعدة البيانات؟')) return;
+  if(!realIsRoot()) return;
+  if(!confirm('حذف هذا الاختبار ونتائجه نهائياً من قاعدة البيانات؟\n(بنك الأسئلة الخاص بالمعلم يظل محفوظاً)')) return;
   await fb(`exams/${eid}`, 'DELETE');
   await fb(`attempts/${eid}`, 'DELETE');
   toast('تم حذف الاختبار');
@@ -1000,7 +1192,7 @@ async function rootDelExam(eid){
 }
 
 async function rootInspectTeacher(tid){
-  if(!isRoot()) return;
+  if(!realIsRoot()) return;
   const [t, allExams] = await Promise.all([fb(`teachers/${tid}`), fb('exams')]);
   const list = Object.values(allExams||{}).filter(e => e && e.owner === tid);
   const m = document.createElement('div'); m.className='modal';
@@ -1265,10 +1457,16 @@ function arm(){
   });
 }
 
-const params = new URLSearchParams(location.search);
-if(params.get('admin') === 'itqan' && isRoot()) rootPanel();
-else if(params.get('c')) sJoin(params.get('c'));
-else home();
+(async()=>{
+  try{
+    const cfg = await fb('sysConfig');
+    if(cfg) sysCfg = {maintenance:!!cfg.maintenance, announcement:cfg.announcement||''};
+  }catch{}
+  const params = new URLSearchParams(location.search);
+  if(params.get('admin') === 'itqan' && realIsRoot()) rootPanel();
+  else if(params.get('c')) sJoin(params.get('c'));
+  else home();
+})();
 </script>
 </body>
 </html>
