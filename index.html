@@ -283,9 +283,15 @@ function tAuth(mode='login'){
         saveT({id:u.uid, name:u.displayName||dbT?.name||'معلم', email:u.email});
       }
       dash();
-    }catch(e){ toast('تنبيه: ' + e.message); }
-  };
-}
+   }catch(e){
+      const msgs = {
+        'auth/invalid-credential': 'كلمة المرور غير صحيحة، أو أن البريد مسجل بحساب Google (اضغط زر Google بالأعلى أو استعد كلمة المرور)',
+        'auth/email-already-in-use': 'هذا البريد مسجل بالفعل! انتقل إلى (تسجيل الدخول) أو ادخل بحساب Google',
+        'auth/weak-password': 'يجب أن تتكون كلمة المرور من 6 أحرف على الأقل',
+        'auth/invalid-email': 'صيغة البريد الإلكتروني غير صحيحة'
+      };
+      toast(msgs[e.code] || ('تنبيه: ' + e.message));
+    }
 
 /* ============== لوحة تحكم المعلم ============== */
 async function dash(){
