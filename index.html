@@ -420,8 +420,9 @@ async function results(id){
   const qs = ex.questions || [];
   const totalPts = qs.reduce((s,q)=>s+(+q.points||1), 0);
 
+const submittedAtts = atts.filter(a => a.status === 'submitted');
   const scoredAtts = atts.filter(a => a.status === 'submitted' || a.status === 'locked');
-  const scores = scoredAtts.map(a => Number(a.score || 0)).sort((a,b) => a - b);
+  const scores = scoredAtts.map(a => Number(a.score ?? 0)).sort((a,b) => a - b);
   const count = scores.length;
   const mean = count ? (scores.reduce((a,b)=>a+b,0) / count).toFixed(2) : 0;
   const median = count ? (count%2 ? scores[Math.floor(count/2)] : ((scores[count/2-1]+scores[count/2])/2).toFixed(1)) : 0;
@@ -433,9 +434,12 @@ async function results(id){
   let modeVal = '-', maxFreq = 0;
   Object.entries(freq).forEach(([k,v]) => { if(v > maxFreq){ maxFreq = v; modeVal = `${k} (${v} طلاب)`; } });
 
-  const ranked = [...scoredAtts].sort((a,b) => (b.score - a.score) || ((a.finishedAt||0) - (b.finishedAt||0)));
-  const firstStudent = ranked[0] ? `${ranked[0].name} (${ranked[0].score}/${totalPts})` : 'لا يوجد';
-  const lastStudent = ranked.length ? `${ranked[ranked.length-1].name} (${ranked[ranked.length-1].score}/${totalPts})` : 'لا يوجد';
+  const getDuration = a => (a.finishedAt && a.startedAt) ? (a.finishedAt - a.startedAt) : (a.finishedAt || Infinity);
+  const fmtDur = a => (a.finishedAt && a.startedAt) ? ` - ${Math.max(1, Math.round((a.finishedAt - a.startedAt)/1000))} ث` : '';
+
+  const ranked = [...submittedAtts].sort((a,b) => (Number(b.score??0) - Number(a.score??0)) || (getDuration(a) - getDuration(b)));
+  const firstStudent = ranked[0] ? `${ranked[0].name} (${Number(ranked[0].score??0)}/${totalPts}${fmtDur(ranked[0])})` : 'لا يوجد';
+  const lastStudent = ranked.length ? `${ranked[ranked.length-1].name} (${Number(ranked[ranked.length-1].score??0)}/${totalPts}${fmtDur(ranked[ranked.length-1])})` : 'لا يوجد';
 
   const qStats = qs.map((q) => {
     let correctCount = 0;
