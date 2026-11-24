@@ -243,7 +243,7 @@ function home(){
       <div class="card-soft hero-portal" onclick="activeTeacher()?dash():tAuth()">
         <div class="ico">👨‍🏫</div>
         <h2>بوابة المعلم</h2>
-        <p class="mut">إنشاء الاختبارات، إدارة الجلسات الحية، رفع كشوف الطلاب، وتحليل الإحصائيات والرسوم البيانية</p>
+        <p class="mut">إنشاء الاختبارات، إدارة الجلسات الحية، رفع كشوف الطلاب، وتحليل النتائج والرسوم البيانية</p>
       </div>
       <div class="card-soft hero-portal" onclick="sJoin()">
         <div class="ico">🎓</div>
@@ -578,8 +578,8 @@ async function dash(){
         </div>
       </div>
       <div class="row">
-        <button class="btn pri sm" onclick="live('${e.id}')">▶ الجلسة الحية</button>
-        <button class="btn sm" onclick="results('${e.id}')">📊 الإحصائيات</button>
+        <button class="btn pri sm" onclick="live('${e.id}')">▶ </button>
+        <button class="btn sm" onclick="results('${e.id}')">📊 النتائج</button>
         <button class="btn sm" onclick="previewExam('${e.id}')">👁️ معاينة</button>
         <button class="btn sm" onclick="builder('${e.id}')">✏️ تعديل</button>
         <button class="btn sm" data-exp="${e.id}">📥 HTML</button>
@@ -807,7 +807,7 @@ async function builder(id){
   draw();
 }
 
-/* ============== الجلسة الحية ============== */
+/* ============== الاختبار ============== */
 async function live(id){
   clearLoops();
   let ex = await fb(`exams/${id}`);
@@ -819,7 +819,7 @@ async function live(id){
   };
   const draw = () => {
     const u = `${location.origin}${location.pathname}?c=${ex.code||''}`;
-    show(`<div class="row between" style="margin-bottom:12px"><h1>📡 الجلسة الحية: ${esc(ex.title)}</h1><div class="row"><button class="btn" onclick="results('${id}')">📊 الإحصائيات</button><button class="btn" id="bk">→ رجوع</button></div></div>
+    show(`<div class="row between" style="margin-bottom:12px"><h1>📡 الاختبار: ${esc(ex.title)}</h1><div class="row"><button class="btn" onclick="results('${id}')">📊 النتائج</button><button class="btn" id="bk">→ رجوع</button></div></div>
     <div class="card center"><span class="badge ${ex.open?'b-ok':'b-bad'}">${ex.open?'الاختبار مفتوح للطلاب الآن':'الاختبار مغلق'}</span>
       ${ex.restrictStudents?` <span class="badge b-purp">🔒 الدخول مقيّد بالكشف (${(ex.allowedList||[]).length} طالب)</span>`:''}
       ${ex.open?`<div class="codebox">${ex.code}</div><div class="qrbox"><div id="qr"></div></div><p class="mut" style="margin-top:8px">كود الدخول يتغير تلقائياً لمنع مشاركته خارج القاعة</p>${ex.rotate>0?'<div class="bar" style="max-width:340px;margin:12px auto"><div id="rb"></div></div>':''}`:'<p class="mut" style="margin:20px">اضغط "فتح الاختبار" لتوليد كود الدخول ورمز QR</p>'}
@@ -856,7 +856,7 @@ async function live(id){
   poll(); startTimers();
 }
 
-/* ============== لوحة الإحصائيات والنتائج + المخطط الدائري + الغائبون ============== */
+/* ============== لوحة النتائج والنتائج + المخطط الدائري + الغائبون ============== */
 async function results(id){
   clearLoops();
   const ex = await fb(`exams/${id}`);
@@ -910,7 +910,7 @@ async function results(id){
   const hardQuestions = qStats.filter(q => count > 0 && q.ratio < 60).sort((a,b) => a.ratio - b.ratio);
   const maxBar = Math.max(...Object.values(freq), 1);
 
-  show(`<div class="row between" style="margin-bottom:12px"><h1>📊 تحليل النتائج والإحصائيات: ${esc(ex.title)}</h1><div class="row"><button class="btn ok" id="csv">⬇ تصدير Excel/CSV</button><button class="btn" id="bk">→ رجوع</button></div></div>
+  show(`<div class="row between" style="margin-bottom:12px"><h1>📊 تحليل النتائج والنتائج: ${esc(ex.title)}</h1><div class="row"><button class="btn ok" id="csv">⬇ تصدير Excel/CSV</button><button class="btn" id="bk">→ رجوع</button></div></div>
 
   <div class="grid4" style="margin-bottom:16px">
     <div class="stat-box"><div class="mut">المتوسط الحسابي</div><div class="stat-val">${mean} / ${totalPts}</div><div class="mut">نقطة</div></div>
@@ -1168,9 +1168,9 @@ async function rootLoginAs(tid){
 
 async function rootForceClose(eid){
   if(!realIsRoot()) return;
-  if(!confirm('هل تريد إغلاق هذه الجلسة الحية فوراً ومنع دخول أي طالب جديد؟')) return;
+  if(!confirm('هل تريد إغلاق هذا الاختبار فوراً ومنع دخول أي طالب جديد؟')) return;
   await fb(`exams/${eid}`, 'PATCH', {open: false});
-  toast('🛑 تم إغلاق الجلسة الحية فوراً');
+  toast('🛑 تم إغلاق الاختبار فوراً');
   rootPanel();
 }
 
@@ -1219,7 +1219,7 @@ function sJoin(pc=''){
     <label>كود الدخول (6 أرقام)</label><input id="cd" dir="ltr" maxlength="6" style="font-size:24px;text-align:center;letter-spacing:.2em;font-weight:800" value="${esc(pc)}">
     <label>اسم الطالب الثلاثي</label><input id="nm" placeholder="اكتب اسمك الكامل">
     <label>الرقم الجامعي / رقم الجلوس</label><input id="si" dir="ltr" placeholder="2026001">
-    <button class="btn pri" id="st" style="width:100%;margin-top:16px;padding:13px">🚀 بدء الاختبار الآن</button></div></div>`, 'student');
+    <button class="btn pri" id="st" style="width:100%;margin-top:16px;padding:13px">🚀 الاختبار الآن</button></div></div>`, 'student');
   $('#st').onclick=async()=>{
     try{
       const code=$('#cd').value.trim(), name=$('#nm').value.trim(), sid=$('#si').value.trim();
