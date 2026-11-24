@@ -79,7 +79,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:11px 10px
 .chart-lbl{font-size:12px;color:#475569;margin-top:6px;font-weight:700}
 .modal{position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
 .modal>div{background:#ffffff;border:1px solid var(--bd);border-radius:22px;padding:24px;max-width:660px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 20px 45px rgba(15,23,42,.18)}
-.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:12px 24px;border-radius:14px;z-index:99;box-shadow:0 10px 30px rgba(15,23,42,.25);font-weight:700}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:12px 24px;border-radius:14px;z-index:99;box-shadow:0 10px 30px rgba(15,23,42,.25);font-weight:700;max-width:92vw;text-align:center}
 .timer{font-weight:900;font-size:22px;direction:ltr;color:#4f46e5}.timer.low{color:var(--bad);animation:bl 1s infinite}@keyframes bl{50%{opacity:.4}}
 .center{text-align:center}.big{font-size:56px}
 .divider{display:flex;align-items:center;text-align:center;color:var(--mut);font-size:13px;margin:16px 0}.divider::before,.divider::after{content:'';flex:1;border-bottom:1px solid var(--bd)}.divider:not(:empty)::before{margin-left:10px}.divider:not(:empty)::after{margin-right:10px}
@@ -94,9 +94,8 @@ body.exam,body.exam *{-webkit-user-select:none;user-select:none}body.exam input,
 <body>
 <div id="app"></div>
 <script>
-// تأكد من وضع مفتاح apiKey الصحيح المنسوخ من إعدادات Firebase هنا
 const firebaseConfig = {
-  apiKey: "AIzaSyAZRWQy_gNUxTjFCQNT0ZWD89AwQxoqSHc",
+  apiKey: "AIzaSyAZRWQy_gNUxTjFCQNT0ZWD89AwQxocSHc",
   authDomain: "test-9036f.firebaseapp.com",
   databaseURL: "https://test-9036f-default-rtdb.firebaseio.com",
   projectId: "test-9036f",
@@ -122,7 +121,7 @@ const rid = (n=6) => Array.from(crypto.getRandomValues(new Uint8Array(n)), b => 
 const shuffle = a => { a=[...a]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]} return a; };
 const fmtTime = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
 
-function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),3600)}
+function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),4200)}
 
 function headerHtml(activeTab='home'){
   return `<div class="brand-bar">
@@ -192,7 +191,7 @@ function home(){
   </div>`, 'home');
 }
 
-/* ============== تبويب منشئ المنصة (الاسم والصورة الشخصية) ============== */
+/* ============== تبويب منشئ المنصة ============== */
 function aboutCreator(){
   clearLoops();
   show(`<div style="max-width:640px;margin:2vh auto">
@@ -269,6 +268,7 @@ function tAuth(mode='login'){
     try{
       const email=$('#em').value.trim(), pass=$('#pw').value;
       if(!email||!pass) return toast('أدخل البريد الإلكتروني وكلمة المرور');
+      if(pass.length<6) return toast('يجب أن تتكون كلمة المرور من 6 أحرف على الأقل');
       if(mode==='reg'){
         const name=$('#nm').value.trim();
         if(!name) return toast('أدخل اسم المعلم');
@@ -283,15 +283,17 @@ function tAuth(mode='login'){
         saveT({id:u.uid, name:u.displayName||dbT?.name||'معلم', email:u.email});
       }
       dash();
-   }catch(e){
+    }catch(e){
       const msgs = {
-        'auth/invalid-credential': 'كلمة المرور غير صحيحة، أو أن البريد مسجل بحساب Google (اضغط زر Google بالأعلى أو استعد كلمة المرور)',
+        'auth/invalid-credential': 'كلمة المرور غير صحيحة، أو أن هذا البريد مسجل بحساب Google (اضغط زر Google بالأعلى أو استعد كلمة المرور)',
         'auth/email-already-in-use': 'هذا البريد مسجل بالفعل! انتقل إلى (تسجيل الدخول) أو ادخل بحساب Google',
         'auth/weak-password': 'يجب أن تتكون كلمة المرور من 6 أحرف على الأقل',
         'auth/invalid-email': 'صيغة البريد الإلكتروني غير صحيحة'
       };
       toast(msgs[e.code] || ('تنبيه: ' + e.message));
     }
+  };
+}
 
 /* ============== لوحة تحكم المعلم ============== */
 async function dash(){
