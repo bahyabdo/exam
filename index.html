@@ -364,6 +364,8 @@ function tAuth(mode='login'){
 
 /* ============== تصدير واستيراد الاختبار (HTML Backup) ============== */
 function exportExamHtml(ex){
+ function exportExamHtml(ex){
+  if(!confirm('هل تريد حفظ نسخة من هذا الاختبار على جهازك؟')) return;
   const cleanEx = {...ex};
   delete cleanEx.owner; delete cleanEx.open; delete cleanEx.code; delete cleanEx.codeAt;
   const payload = btoa(unescape(encodeURIComponent(JSON.stringify(cleanEx))));
@@ -510,9 +512,14 @@ async function dash(){
         <button class="btn sm" onclick="previewExam('${e.id}')">👁️ معاينة</button>
         <button class="btn sm" onclick="builder('${e.id}')">✏️ تعديل</button>
         <button class="btn sm" onclick="exportExamHtml(${JSON.stringify(e).replace(/"/g,'"')})">📥 HTML</button>
+       <button class="btn sm" data-exp="${e.id}">📥 HTML</button>
         <button class="btn bad sm" onclick="delEx('${e.id}')">🗑️</button>
       </div></div></div>`).join(''):'<div class="card center mut" style="padding:40px">لا توجد اختبارات مطابقة للبحث الحالي.</div>'}</div>`, 'teacher');
 
+    document.querySelectorAll('[data-exp]').forEach(b => b.onclick = () => {
+      const ex = list.find(x => x.id === b.dataset.exp);
+      if(ex) exportExamHtml(ex);
+    });
     $('#nw').onclick=()=>builder();
     $('#impF').onchange=e=>{ if(e.target.files[0]) importExamHtml(e.target.files[0]); };
     $('#out').onclick=async()=>{await auth.signOut().catch(()=>{});saveT(null);home()};
