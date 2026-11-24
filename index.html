@@ -511,7 +511,7 @@ async function dash(){
         <button class="btn sm" onclick="results('${e.id}')">📊 الإحصائيات</button>
         <button class="btn sm" onclick="previewExam('${e.id}')">👁️ معاينة</button>
         <button class="btn sm" onclick="builder('${e.id}')">✏️ تعديل</button>
-        <button class="btn sm" onclick="exportExamHtml(${JSON.stringify(e).replace(/"/g,'"')})">📥 HTML</button>
+      
        <button class="btn sm" data-exp="${e.id}">📥 HTML</button>
         <button class="btn bad sm" onclick="delEx('${e.id}')">🗑️</button>
       </div></div></div>`).join(''):'<div class="card center mut" style="padding:40px">لا توجد اختبارات مطابقة للبحث الحالي.</div>'}</div>`, 'teacher');
