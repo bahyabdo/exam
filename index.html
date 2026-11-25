@@ -934,7 +934,7 @@ async function rootPanel(onlyInactive=false){
   </div>`, 'root');
 
   $('#mntBtn').onclick = async () => { await fb('sysConfig', 'PATCH', {maintenance: !sysCfg.maintenance}); rootPanel(onlyInactive); };
-  $('#annSave').onclick = async () => { await fb('sysConfig', 'PATCH', {announcement: $('#annInp'].value.trim()}); toast('تم حفظ الإعلان'); rootPanel(onlyInactive); };
+  $('#annSave').onclick = async () => { await fb('sysConfig', 'PATCH', {announcement: $('#annInp').value.trim()}); toast('تم حفظ الإعلان'); rootPanel(onlyInactive); };
   $('#fullBkBtn').onclick = async () => {
     const fullData = await fb('');
     const a = document.createElement('a');
@@ -1108,7 +1108,7 @@ function startExam(ex, att){
 
     app.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{ S.ans[q.id]=+b.dataset.o; sync(); render(); });
     app.querySelectorAll('[data-jump]').forEach(b=>b.onclick=()=>goQ(+b.dataset.jump));
-    if($('#ta')) $('#ta'].oninput = e => { S.ans[q.id]=e.target.value; saveLocalAttempt(ex.id, att.id, {answers:S.ans, status:'active'}); };
+    if($('#ta')) $('#ta').oninput = e => { S.ans[q.id]=e.target.value; saveLocalAttempt(ex.id, att.id, {answers:S.ans, status:'active'}); };
     if($('#pv')) $('#pv').onclick = () => goQ(S.idx-1);
     if($('#nx')) $('#nx').onclick = () => goQ(S.idx+1);
     if($('#sb')) $('#sb').onclick = () => { if(confirm('هل أنت متأكد من تسليم إجاباتك نهائياً؟')) submit(); };
