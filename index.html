@@ -4,13 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Itqan | منصة إتقان للاختبارات الرقمية الذكية والآمنة</title>
-  <meta name="description" content="منصة إتقان (Itqan) للاختبارات الرقمية الذكية والآمنة - إنشاء اختبارات إلكترونية، منع الغش، حفظ تلقائي، وتحليل فوري للنتائج." />
+  <meta name="description" content="منصة إتقان (Itqan) للاختبارات الرقمية الذكية والآمنة - إنشاء اختبارات إلكترونية، استيراد من Excel، توليد متوازن، ومنع الغش." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <!-- مكتبة المعادلات الرياضية KaTeX -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+  <!-- مكتبة قراءة وتصدير ملفات Excel (SheetJS) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <!-- مكتبة الاحتفال بالنجاح -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
   <!-- Firebase SDK -->
@@ -33,7 +35,8 @@
     .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
     .between{justify-content:space-between}
     .center{text-align:center}
-    .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px}
+    .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+    .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
     .grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
     .stat-box{background:#fff;border:1px solid var(--bd);border-radius:16px;padding:16px;text-align:center}
     .stat-val{font-size:28px;font-weight:900;color:var(--pri);margin:4px 0}
@@ -105,16 +108,17 @@
   <div id="toast"></div>
 
 <script>
-/* ================= إعدادات Firebase (ضع بيانات مشروعك هنا كما هي) ================= */
-const FIREBASE_URL = "https://exam-platform-default-rtdb.firebaseio.com";
+/* ================= إعدادات Firebase (استبدل القيم ببيانات مشروعك كما في ملفك السابق) ================= */
+const FIREBASE_URL = "https://test-9036f-default-rtdb.firebaseio.com";
 const FIREBASE_CONFIG = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "exam-platform.firebaseapp.com",
-  databaseURL: FIREBASE_URL,
-  projectId: "exam-platform",
-  storageBucket: "exam-platform.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyAZRWQy_gNUxTjFCQNT0ZWD89AwQxoqSHc",
+  authDomain: "test-9036f.firebaseapp.com",
+  databaseURL: "https://test-9036f-default-rtdb.firebaseio.com",
+  projectId: "test-9036f",
+  storageBucket: "test-9036f.firebasestorage.app",
+  messagingSenderId: "199754347278",
+  appId: "1:199754347278:web:cfdac177770bb4b6789d5f",
+  measurementId: "G-EYGCCHLTG3"
 };
 const ROOT_EMAIL = "bahyabdo25@gmail.com";
 const OFFLINE_GRACE_SEC = 60; // مهلة انقطاع الإنترنت بالثواني قبل القفل (60 ثانية عادلة مع طمس الأسئلة)
@@ -126,7 +130,7 @@ const $ = s => document.querySelector(s);
 const app = $('#app');
 let loops = [], S = null, user = null, impTeacher = null, sysCfg = {maintenance:false, announcement:''};
 
-const esc = s => String(s??'').replace(/[&<>"']/g, m=>({'&':'&','<':'<','>':'>','"':'"',"'":'''}[m]));
+const esc = s => String(s??'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const rid = n => Array.from(crypto.getRandomValues(new Uint8Array(n)), b=>b.toString(36).padStart(2,'0')).join('').slice(0,n);
 const normSid = s => String(s||'').trim().replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/\s+/g,'');
 const shuffle = a => { const b=[...a]; for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];} return b; };
@@ -134,7 +138,7 @@ const fmtTime = sec => `${String(Math.floor(sec/60)).padStart(2,'0')}:${String(s
 
 function toast(msg){
   const t = $('#toast'); t.textContent = msg; t.style.display = 'block';
-  clearTimeout(t._tm); t._tm = setTimeout(()=>t.style.display='none', 3800);
+  clearTimeout(t._tm); t._tm = setTimeout(()=>t.style.display='none', 4000);
 }
 
 function clearLoops(){ loops.forEach(clearInterval); loops = []; $('#wm')?.remove(); document.body.classList.remove('exam'); app.style.filter='none'; }
@@ -179,7 +183,7 @@ function clearLocalAttempt(exId, attId){
   try{ localStorage.removeItem(`itqan_rec_${exId}_${attId}`); }catch{}
 }
 
-// مزامنة تلقائية لأي محاولة محفوظة محلياً عند عودة الإنترنت في أي وقت
+// مزامنة تلقائية لأي محاولة محفوظة محلياً عند عودة الإنترنت
 window.addEventListener('online', async () => {
   try{
     for(let i=0; i<localStorage.length; i++){
@@ -228,9 +232,9 @@ function home(){
     </div>`, 'home');
   }
   show(`<div class="card center" style="padding:34px 20px;background:linear-gradient(135deg,#0f172a,#1e1b4b);color:#fff;border:none">
-    <span class="badge" style="background:rgba(56,189,248,.2);color:#7dd3fc">الإصدار الاحترافي المؤمّن 2026</span>
+    <span class="badge" style="background:rgba(56,189,248,.2);color:#7dd3fc">الإصدار الاحترافي المتكامل 2026</span>
     <h1 style="font-size:30px;margin:10px 0">منصة Itqan | إتقان للاختبارات الرقمية الذكية</h1>
-    <p style="color:#cbd5e1;max-width:600px;margin:0 auto 22px">بيئة اختبارات محصّنة ضد الغش والذكاء الاصطناعي، مزودة بالحفظ المحلي التلقائي، تصحيح فوري، وتحليل إحصائي دقيق.</p>
+    <p style="color:#cbd5e1;max-width:620px;margin:0 auto 22px">بيئة اختبارات محصّنة ضد الغش والذكاء الاصطناعي، تدعم الاستيراد من Excel، التوليد المتوازن، الحفظ التلقائي، والتحليل الإحصائي.</p>
     <div class="row" style="justify-content:center;gap:14px">
       <button class="btn pri" style="padding:13px 26px;font-size:16px" onclick="sJoin()">🎓 دخول طالب للاختبار</button>
       <button class="btn" style="padding:13px 24px;font-size:16px" onclick="${user?'dash()':'teacherLogin()'}">👨‍🏫 ${user?'لوحة تحكم المعلم':'دخول / تسجيل معلم'}</button>
@@ -238,9 +242,9 @@ function home(){
   </div>
   <div class="grid4">
     <div class="stat-box"><div style="font-size:26px">🛡️</div><h3>حماية شاملة</h3><p class="mut">منع تقسيم الشاشة، النوافذ العائمة، والنسخ واللمس المطول.</p></div>
+    <div class="stat-box"><div style="font-size:26px">📥</div><h3>استيراد Excel</h3><p class="mut">رفع عشرات الأسئلة وخياراتها وتفسيراتها بضغطة واحدة.</p></div>
+    <div class="stat-box"><div style="font-size:26px">🎲</div><h3>توليد متوازن</h3><p class="mut">نماذج مخصصة لكل طالب حسب السهل والمتوسط والصعب.</p></div>
     <div class="stat-box"><div style="font-size:26px">💾</div><h3>حفظ تلقائي ذكي</h3><p class="mut">حفظ فوري للإجابات عند ضعف الشبكة مع مهلة 60 ثانية عادلة.</p></div>
-    <div class="stat-box"><div style="font-size:26px">🧮</div><h3>معادلات علمية</h3><p class="mut">دعم كامل للمعادلات الرياضية والكيميائية بتنسيق KaTeX.</p></div>
-    <div class="stat-box"><div style="font-size:26px">📊</div><h3>مراقبة وتحليل</h3><p class="mut">تتبع لحظي للطلاب وتحليل معامل صعوبة كل سؤال.</p></div>
   </div>
   <div class="card center mut" style="font-size:13px">تطوير وتصميم: <b>الباهي عبدالرحمن</b> — منصة إتقان للتقييم الرقمي الآمن</div>`, 'home');
 }
@@ -284,15 +288,18 @@ async function dash(){
     <div><h2>👋 أهلاً بك، ${esc(impTeacher ? impTeacher.name : user.displayName)}</h2><span class="mut">إدارة الاختبارات، المراقبة الحية، وتحليل النتائج</span></div>
     <button class="btn pri" onclick="builder()">➕ إنشاء اختبار جديد</button>
   </div>
-  ${myExams.length ? myExams.map(e => `
-    <div class="card row between">
+  ${myExams.length ? myExams.map(e => {
+    const bal = e.balanced || {};
+    const isBal = (bal.easy||0) + (bal.med||0) + (bal.hard||0) > 0;
+    return `<div class="card row between">
       <div>
         <div class="row">
           <h3 style="margin:0">${esc(e.title)}</h3>
           <span class="badge ${e.open?'b-ok':'b-warn'}">${e.open ? `🟢 مفتوح (كود: ${e.code})` : '🔒 مغلق'}</span>
-          ${e.warnOnce ? '<span class="badge b-info">⚠️ نظام الإنذار الأول</span>' : ''}
+          ${isBal ? `<span class="badge b-info">🎲 سحب متوازن (${(bal.easy||0)+(bal.med||0)+(bal.hard||0)} سؤال)</span>` : ''}
+          ${e.warnOnce ? '<span class="badge b-warn">⚠️ إنذار أول</span>' : ''}
         </div>
-        <div class="mut" style="margin-top:6px">عدد الأسئلة: <b>${(e.questions||[]).length}</b> | المدة: <b>${e.duration} دقيقة</b> ${e.qTimer?`| مؤقت السؤال: <b>${e.qTimer}ث</b>`:''}</div>
+        <div class="mut" style="margin-top:6px">إجمالي بنك الاختبار: <b>${(e.questions||[]).length} سؤال</b> | المدة: <b>${e.duration} دقيقة</b> ${e.qTimer?`| مؤقت السؤال: <b>${e.qTimer}ث</b>`:''}</div>
       </div>
       <div class="row">
         <button class="btn pri sm" onclick="live('${e.id}')">▶ بدء الاختبار</button>
@@ -300,7 +307,8 @@ async function dash(){
         <button class="btn sm" onclick="builder('${e.id}')">✏️ تعديل</button>
         <button class="btn bad sm" onclick="delExam('${e.id}')">🗑️</button>
       </div>
-    </div>`).join('') : '<div class="card center mut" style="padding:40px">لا توجد اختبارات بعد. اضغط على «➕ إنشاء اختبار جديد» للبدء.</div>'}`, 'teacher');
+    </div>`;
+  }).join('') : '<div class="card center mut" style="padding:40px">لا توجد اختبارات بعد. اضغط على «➕ إنشاء اختبار جديد» للبدء.</div>'}`, 'teacher');
 }
 
 async function delExam(eid){
@@ -311,18 +319,91 @@ async function delExam(eid){
   dash();
 }
 
-/* ================= منشئ الاختبارات الاحترافي (مع المعادلات والشرح والإنذار الأول) ================= */
+/* ================= دوال قالب Excel واستيراد الأسئلة (SheetJS) ================= */
+function downloadExcelTemplate(){
+  if(typeof XLSX === 'undefined') return toast('مكتبة Excel قيد التحميل، حاول بعد لحظة');
+  const rows = [
+    ['نص السؤال', 'النوع (mcq/tf/short)', 'خيار 1', 'خيار 2', 'خيار 3', 'خيار 4', 'رقم الإجابة الصحيحة (1-4) أو النص', 'الصعوبة (easy/med/hard)', 'الدرجة', 'تفسير الإجابة (اختياري)'],
+    ['ما هو البروتوكول المسؤول عن توزيع عناوين IP تلقائياً في الشبكة؟', 'mcq', 'DNS', 'DHCP', 'HTTP', 'FTP', 2, 'easy', 1, 'بروتوكول DHCP يوزع عناوين IP تلقائياً للأجهزة المتصلة بالشبكة.'],
+    ['تستخدم خرائط كارنوف لتبسيط التعبيرات المنطقية في الجبر البوليني.', 'tf', '', '', '', '', 1, 'med', 1, 'نعم، خرائط كارنوف تقلل عدد البوابات المنطقية المطلوبة.'],
+    ['اكتب اسم الدالة المستخدمة للطباعة في لغة بايثون', 'short', '', '', '', '', 'print', 'easy', 2, 'دالة print() هي الدالة القياسية للطباعة في Python.']
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'الأسئلة');
+  XLSX.writeFile(wb, 'Itqan_Questions_Template.xlsx');
+  toast('✅ تم تنزيل قالب Excel الجاهز بنجاح');
+}
+
+function handleExcelImport(file, ex, renderCallback){
+  if(!file) return;
+  if(typeof XLSX === 'undefined') return toast('مكتبة Excel غير متوفرة حالياً');
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      const wb = XLSX.read(e.target.result, {type: 'array'});
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: ''});
+      let added = 0;
+      for(let i = 1; i < rows.length; i++){
+        const r = rows[i];
+        const text = String(r[0]||'').trim();
+        if(!text) continue;
+        let rawType = String(r[1]||'mcq').trim().toLowerCase();
+        const type = ['tf','صح','خطأ','true','false'].includes(rawType) ? 'tf' : ['short','قصيرة','مقالي'].includes(rawType) ? 'short' : 'mcq';
+        const opts = [String(r[2]||'').trim(), String(r[3]||'').trim(), String(r[4]||'').trim(), String(r[5]||'').trim()];
+        const rawCor = String(r[6]||'1').trim();
+        let correct = 0;
+        if(type === 'mcq'){
+          const idx = parseInt(rawCor, 10);
+          correct = (idx >= 1 && idx <= 4) ? idx - 1 : 0;
+        } else if(type === 'tf'){
+          correct = (rawCor === '2' || rawCor === 'خطأ' || rawCor.toLowerCase() === 'false') ? 1 : 0;
+        } else {
+          correct = rawCor;
+        }
+        const rawDiff = String(r[7]||'med').trim().toLowerCase();
+        const diff = ['easy','سهل'].includes(rawDiff) ? 'easy' : ['hard','صعب'].includes(rawDiff) ? 'hard' : 'med';
+        const points = Math.max(1, parseInt(r[8], 10) || 1);
+        const explain = String(r[9]||'').trim();
+
+        ex.questions.push({
+          id: rid(6), type, text, img: '', points, diff, explain,
+          options: type === 'mcq' ? opts : [],
+          correct
+        });
+        added++;
+      }
+      if(added > 0){
+        toast(`🎉 تم استيراد (${added}) سؤال بنجاح من الملف!`);
+        renderCallback();
+      } else {
+        toast('⚠️ لم يتم العثور على أسئلة صالحة في الملف، تأكد من اتباع ترتيب الأعمدة في القالب.');
+      }
+    }catch(err){
+      toast('❌ خطأ في قراءة الملف: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ================= منشئ الاختبارات الاحترافي (مع Excel والتوليد المتوازن) ================= */
 async function builder(eid=null){
   if(!user) return teacherLogin();
   const tid = curTeacherId();
   let ex = eid ? await fb(`exams/${eid}`) : {
     id: rid(8), owner: tid, title: '', duration: 20, qTimer: 0,
     shuffleQ: true, shuffleO: true, allowBack: true, showScore: true,
-    warnOnce: false, restrictStudents: false, allowedList: [],
+    warnOnce: false, balanced: {easy: 0, med: 0, hard: 0},
     open: false, code: '', created: Date.now(), questions: []
   };
+  if(!ex.balanced) ex.balanced = {easy: 0, med: 0, hard: 0};
 
   const renderB = () => {
+    const cntEasy = ex.questions.filter(q => (q.diff||'med') === 'easy').length;
+    const cntMed = ex.questions.filter(q => (q.diff||'med') === 'med').length;
+    const cntHard = ex.questions.filter(q => (q.diff||'med') === 'hard').length;
+
     show(`<div class="card row between">
       <h2>${eid ? '✏️ تعديل الاختبار' : '➕ إنشاء اختبار احترافي جديد'}</h2>
       <div class="row">
@@ -330,6 +411,7 @@ async function builder(eid=null){
         <button class="btn" onclick="dash()">إلغاء</button>
       </div>
     </div>
+
     <div class="card">
       <h3>⚙️ الإعدادات العامة والأمان</h3>
       <div class="grid2">
@@ -351,10 +433,25 @@ async function builder(eid=null){
       </div>
     </div>
 
+    <div class="card" style="background:#f8fafc">
+      <h3>🎲 التوليد الذكي العشوائي المتوازن (اختياري)</h3>
+      <p class="mut" style="margin-bottom:10px">حدد عدد الأسئلة التي تُسحب عشوائياً لكل طالب حسب المستوى ليحصل كل طالب على نموذج فريد ومتوازن (اتركها <b>0</b> لعرض جميع الأسئلة).</p>
+      <div class="grid3">
+        <div><label>🟢 أسئلة سهلة (المتاح: ${cntEasy})</label><input id="balEasy" type="number" min="0" max="${cntEasy}" value="${ex.balanced.easy||0}"></div>
+        <div><label>🟡 أسئلة متوسطة (المتاح: ${cntMed})</label><input id="balMed" type="number" min="0" max="${cntMed}" value="${ex.balanced.med||0}"></div>
+        <div><label>🔴 أسئلة صعبة (المتاح: ${cntHard})</label><input id="balHard" type="number" min="0" max="${cntHard}" value="${ex.balanced.hard||0}"></div>
+      </div>
+    </div>
+
     <div class="card">
       <div class="row between">
-        <div><h3 style="margin:0">📝 الأسئلة (${ex.questions.length})</h3><span class="mut">يدعم المعادلات الرياضية بوضعها بين علامتي $ مثل: $\\frac{a}{b}$</span></div>
+        <div>
+          <h3 style="margin:0">📝 الأسئلة (${ex.questions.length})</h3>
+          <span class="mut">يدعم المعادلات الرياضية بوضعها بين علامتي $ مثل: $\\frac{a}{b}$</span>
+        </div>
         <div class="row">
+          <button class="btn sm" onclick="downloadExcelTemplate()">📥 قالب Excel جاهز</button>
+          <label class="btn warn sm" style="margin:0;cursor:pointer">📤 استيراد من Excel/CSV<input type="file" id="xlInp" accept=".xlsx,.xls,.csv" style="display:none"></label>
           <button class="btn pri sm" onclick="addQ('mcq')">+ اختيار من متعدد</button>
           <button class="btn pri sm" onclick="addQ('tf')">+ صح / خطأ</button>
           <button class="btn pri sm" onclick="addQ('short')">+ إجابة قصيرة</button>
@@ -366,7 +463,7 @@ async function builder(eid=null){
             <div class="row between">
               <b>سؤال ${idx+1} (${q.type==='mcq'?'اختيار متعدد':q.type==='tf'?'صح / خطأ':'إجابة قصيرة'})</b>
               <div class="row">
-                <select onchange="ex.questions[${idx}].diff=this.value" style="width:auto;padding:4px 8px;font-size:12px">
+                <select onchange="ex.questions[${idx}].diff=this.value;renderB()" style="width:auto;padding:4px 8px;font-size:12px">
                   <option value="easy" ${q.diff==='easy'?'selected':''}>🟢 سهل</option>
                   <option value="med" ${!q.diff||q.diff==='med'?'selected':''}>🟡 متوسط</option>
                   <option value="hard" ${q.diff==='hard'?'selected':''}>🔴 صعب</option>
@@ -387,11 +484,12 @@ async function builder(eid=null){
               <label style="margin:0"><input type="radio" name="cor_${idx}" style="width:auto" ${q.correct===1?'checked':''} onchange="ex.questions[${idx}].correct=1"> خطأ</label>
             </div>` : ''}
             ${q.type==='short' ? `<input style="margin-top:8px" placeholder="الإجابة النموذجية للتصحيح التلقائي" value="${esc(q.correct||'')}" oninput="ex.questions[${idx}].correct=this.value">` : ''}
-            <input style="margin-top:8px;background:#f0fdf4" placeholder="💡 تفسير الإجابة الصحيحة (يظهر للطالب بعد التسليم لتعزيز التعلم - اختياري)" value="${esc(q.explain||'')}" oninput="ex.questions[${idx}].explain=this.value">
+            <input style="margin-top:8px;background:#f0fdf4" placeholder="💡 تفسير الإجابة الصحيحة (يظهر للطالب بعد التسليم - اختياري)" value="${esc(q.explain||'')}" oninput="ex.questions[${idx}].explain=this.value">
           </div>`).join('')}
       </div>
     </div>`, 'teacher');
 
+    window.ex = ex;
     window.renderB = renderB;
     window.addQ = type => {
       ex.questions.push({
@@ -402,6 +500,8 @@ async function builder(eid=null){
       renderB();
     };
 
+    $('#xlInp').onchange = e => handleExcelImport(e.target.files[0], ex, renderB);
+
     $('#saveEx').onclick = async () => {
       ex.title = $('#exTitle').value.trim();
       ex.duration = Math.max(1, +$('#exDur').value || 20);
@@ -411,6 +511,12 @@ async function builder(eid=null){
       ex.shuffleO = $('#shO').checked;
       ex.allowBack = $('#alB').checked;
       ex.showScore = $('#shS').checked;
+
+      const bE = Math.max(0, Math.min(cntEasy, +$('#balEasy').value || 0));
+      const bM = Math.max(0, Math.min(cntMed, +$('#balMed').value || 0));
+      const bH = Math.max(0, Math.min(cntHard, +$('#balHard').value || 0));
+      ex.balanced = {easy: bE, med: bM, hard: bH};
+
       if(!ex.title) return toast('اكتب عنوان الاختبار أولاً');
       if(!ex.questions.length) return toast('أضف سؤالاً واحداً على الأقل');
       await fb(`exams/${ex.id}`, 'PUT', ex);
@@ -421,7 +527,7 @@ async function builder(eid=null){
   renderB();
 }
 
-/* ================= لوحة بدء الاختبار والمراقبة الحية التفاعلية (Live Proctoring Grid) ================= */
+/* ================= لوحة بدء الاختبار والمراقبة الحية التفاعلية ================= */
 async function live(eid){
   if(!user) return teacherLogin();
   clearLoops();
@@ -460,7 +566,7 @@ async function live(eid){
           <tr><th>الطالب</th><th>الرقم</th><th>التقدم</th><th>الحالة</th><th>تحكم المعلم الفوري</th></tr>
           ${atts.map(a => {
             const ansCnt = Object.keys(a.answers||{}).length;
-            const totQ = (ex.questions||[]).length;
+            const totQ = (a.order || ex.questions || []).length;
             return `<tr>
               <td><b>${esc(a.name)}</b></td>
               <td dir="ltr">${esc(a.sid)}</td>
@@ -511,13 +617,18 @@ async function results(eid){
   const [ex, attsObj] = await Promise.all([fb(`exams/${eid}`), fb(`attempts/${eid}`)]);
   const atts = Object.values(attsObj || {}).sort((a,b)=>(b.score||0)-(a.score||0));
 
-  // تحليل معامل الصعوبة لكل سؤال
   const submittedAtts = atts.filter(a => a.status === 'submitted');
   const qStats = (ex.questions||[]).map((q, i) => {
-    let correctCnt = 0;
-    submittedAtts.forEach(a => { if((a.graded||{})[q.id] > 0) correctCnt++; });
-    const diffPct = submittedAtts.length ? Math.round((correctCnt / submittedAtts.length) * 100) : 0;
-    return {idx: i+1, text: q.text, diffPct};
+    let shownCnt = 0, correctCnt = 0;
+    submittedAtts.forEach(a => {
+      const wasInPaper = (a.order || ex.questions).some(item => item.id === q.id);
+      if(wasInPaper){
+        shownCnt++;
+        if((a.graded||{})[q.id] > 0) correctCnt++;
+      }
+    });
+    const diffPct = shownCnt ? Math.round((correctCnt / shownCnt) * 100) : 0;
+    return {idx: i+1, text: q.text, diffPct, shownCnt};
   });
 
   show(`<div class="card row between">
@@ -548,11 +659,12 @@ async function results(eid){
     <h3>📈 تحليل معامل سهولة وصعوبة الأسئلة (Item Analysis)</h3>
     <div class="table-wrap">
       <table>
-        <tr><th>السؤال</th><th>نسبة الإجابة الصحيحة</th><th>التقييم الإحصائي</th></tr>
+        <tr><th>السؤال</th><th>مرات الظهور</th><th>نسبة الإجابة الصحيحة</th><th>التقييم الإحصائي</th></tr>
         ${qStats.map(s => `<tr>
-          <td><b>س${s.idx}:</b> ${esc(s.text.slice(0,65))}...</td>
+          <td><b>س${s.idx}:</b> ${esc(s.text.slice(0,60))}...</td>
+          <td>${s.shownCnt} طالب</td>
           <td><b>${s.diffPct}%</b></td>
-          <td>${s.diffPct>80?'<span class="badge b-ok">سهل جداً</span>':s.diffPct<35?'<span class="badge b-bad">صعب / يحتاج مراجعة</span>':'<span class="badge b-info">متوازن وممتاز</span>'}</td>
+          <td>${s.shownCnt===0?'<span class="badge">لم يُختبر</span>':s.diffPct>80?'<span class="badge b-ok">سهل جداً</span>':s.diffPct<35?'<span class="badge b-bad">صعب / يحتاج مراجعة</span>':'<span class="badge b-info">متوازن وممتاز</span>'}</td>
         </tr>`).join('')}
       </table>
     </div>
@@ -561,6 +673,8 @@ async function results(eid){
 
 async function printStudentPaper(eid, aid){
   const [ex, att] = await Promise.all([fb(`exams/${eid}`), fb(`attempts/${eid}/${aid}`)]);
+  const qMap = Object.fromEntries((ex.questions||[]).map(q => [q.id, q]));
+  const studentQuestions = (att.order || ex.questions || []).map(it => qMap[it.id]).filter(Boolean);
   const w = window.open('', '_blank', 'width=850,height=700');
   w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>ورقة إجابة - ${esc(att.name)}</title>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;800&display=swap" rel="stylesheet">
@@ -569,7 +683,7 @@ async function printStudentPaper(eid, aid){
     <button class="np" onclick="window.print()" style="padding:8px 18px;background:#4f46e5;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:14px">🖨️ طباعة التقرير</button>
     <h2>ورقة إجابة الطالب — منصة Itqan | إتقان</h2>
     <p><b>الاسم:</b> ${esc(att.name)} | <b>الرقم:</b> ${esc(att.sid)} | <b>الاختبار:</b> ${esc(ex.title)} | <b>الدرجة:</b> ${att.score??0} من ${att.total}</p><hr>
-    ${(ex.questions||[]).map((q, i) => {
+    ${studentQuestions.map((q, i) => {
       const uAns = (att.answers||{})[q.id];
       const uTxt = q.type==='mcq' ? (q.options[uAns]||'لم يجب') : q.type==='tf' ? (uAns===0?'صح':uAns===1?'خطأ':'لم يجب') : (uAns||'لم يجب');
       const cTxt = q.type==='mcq' ? q.options[q.correct] : q.type==='tf' ? (q.correct===0?'صح':'خطأ') : q.correct;
@@ -688,11 +802,26 @@ async function rootDeleteTeacher(tid, name){
   toast('تم حذف الحساب وتنظيف قاعدة البيانات'); rootPanel();
 }
 
-/* ================= بوابة الطالب والحماية القصوى والحفظ التلقائي ================= */
+/* ================= بوابة الطالب، التوليد المتوازن، الحماية، والحفظ التلقائي ================= */
 function isSplitScreen(){
   const sw = Math.min(screen.width, screen.height), sh = Math.max(screen.width, screen.height);
   const ww = Math.min(window.innerWidth, window.innerHeight), wh = Math.max(window.innerWidth, window.innerHeight);
   return (ww < sw * 0.72) || (wh < sh * 0.72);
+}
+
+// دالة سحب الأسئلة المتوازنة حسب المستوى لكل طالب
+function buildStudentQuestions(ex){
+  const all = ex.questions || [];
+  const bal = ex.balanced || {};
+  const bE = bal.easy || 0, bM = bal.med || 0, bH = bal.hard || 0;
+  if(bE + bM + bH > 0){
+    const easyPool = shuffle(all.filter(q => (q.diff||'med') === 'easy')).slice(0, bE);
+    const medPool  = shuffle(all.filter(q => (q.diff||'med') === 'med')).slice(0, bM);
+    const hardPool = shuffle(all.filter(q => (q.diff||'med') === 'hard')).slice(0, bH);
+    const combined = [...easyPool, ...medPool, ...hardPool];
+    return ex.shuffleQ ? shuffle(combined) : combined;
+  }
+  return ex.shuffleQ ? shuffle(all) : all;
 }
 
 function sJoin(pc=''){
@@ -720,9 +849,9 @@ function sJoin(pc=''){
       if(att && att.status === 'submitted') return toast('لقد قمت بتسليم هذا الاختبار مسبقاً');
       if(att && att.status === 'locked') return toast('تم قفل اختبارك بسبب مخالفة، راجع المعلم');
       if(!att){
-        const qs = ex.shuffleQ ? shuffle(ex.questions) : ex.questions;
-        const order = qs.map(q=>({id:q.id, opts:(q.type==='mcq'||q.type==='tf')?(ex.shuffleO?shuffle(q.options.map((_,i)=>i)):q.options.map((_,i)=>i)):null}));
-        const total = ex.questions.reduce((s,q)=>s+(+q.points||1),0);
+        const chosenQs = buildStudentQuestions(ex);
+        const order = chosenQs.map(q=>({id:q.id, opts:(q.type==='mcq'||q.type==='tf')?(ex.shuffleO?shuffle(q.options.map((_,i)=>i)):q.options.map((_,i)=>i)):null}));
+        const total = chosenQs.reduce((s,q)=>s+(+q.points||1),0);
         const aid = rid(8);
         att = {id:aid, examId:ex.id, name, sid, status:'active', startedAt:Date.now(), answers:{}, total, order};
         await fb(`attempts/${ex.id}/${aid}`, 'PUT', att);
@@ -738,7 +867,6 @@ function startExam(ex, att){
   const qMap = Object.fromEntries(ex.questions.map(q=>[q.id,q]));
   S = {ex, att, idx:0, ans:{...(att.answers||{})}, done:false, locked:false, fsOk:!!document.fullscreenElement, qLeft: ex.qTimer||0, warned:false, offSince:null, lastMsgId:0};
 
-  // استرجاع أي إجابات محفوظة محلياً
   const cached = loadLocalAttempt(ex.id, att.id);
   if(cached && cached.answers) S.ans = {...cached.answers, ...S.ans};
 
@@ -813,7 +941,6 @@ function startExam(ex, att){
       app.style.filter='blur(28px)';
       violation('استخدام تقسيم الشاشة أو نافذة عائمة أثناء الاختبار'); return;
     }
-    // مراقبة انقطاع الإنترنت (طمس فوري + مهلة 60 ثانية عادلة)
     if(!navigator.onLine){
       if(!S.offSince) S.offSince = Date.now();
       const offSec = Math.floor((Date.now() - S.offSince) / 1000);
@@ -849,7 +976,6 @@ function startExam(ex, att){
     if(left <= 0 && !S.done) submit();
   };
 
-  // استقبال أوامر المعلم اللحظية (تمديد وقت / رسالة تنبيه / إنهاء إجباري)
   loops.push(setInterval(async () => {
     if(!S || S.done || S.locked || !navigator.onLine) return;
     try{
@@ -873,8 +999,10 @@ function startExam(ex, att){
 async function submit(){
   if(!S || S.done) return; S.done = true; clearLoops();
   const {ex, att, ans} = S;
+  const qMap = Object.fromEntries(ex.questions.map(q=>[q.id,q]));
   let score = 0; const graded = {};
-  ex.questions.forEach(q => {
+  (att.order || ex.questions).forEach(it => {
+    const q = qMap[it.id]; if(!q) return;
     const a = ans[q.id]; let g = 0;
     if(q.type==='mcq'||q.type==='tf'){ if(a===q.correct) g = q.points; }
     else if(q.type==='short'){ if(String(a||'').trim().toLowerCase()===String(q.correct||'').trim().toLowerCase()) g = q.points; }
@@ -919,7 +1047,9 @@ function end(st, sc, tot){
   if(st==='submitted' && gi.status==='ناجح' && typeof confetti==='function'){
     confetti({particleCount:90, spread:70, origin:{y:0.6}});
   }
-  const explainsHtml = (st==='submitted' && S.ex.showScore) ? (S.ex.questions||[]).filter(q=>q.explain).map((q,i)=>`
+  const qMap = Object.fromEntries((S.ex.questions||[]).map(q=>[q.id,q]));
+  const studentQs = (S.att.order || S.ex.questions || []).map(it => qMap[it.id]).filter(Boolean);
+  const explainsHtml = (st==='submitted' && S.ex.showScore) ? studentQs.filter(q=>q.explain).map(q=>`
     <div class="qc" style="text-align:right"><b>💡 تفسير (${esc(q.text.slice(0,45))}...):</b><div class="mut">${esc(q.explain)}</div></div>`).join('') : '';
 
   show(`<div class="card center" style="max-width:560px;margin:4vh auto;padding:30px">
@@ -939,7 +1069,6 @@ function end(st, sc, tot){
 
 async function violation(reason){
   if(!S || S.done || S.locked || Date.now() < S.armAt) return;
-  // دعم نظام الإنذار الأول المرن إذا فعّله المعلم
   if(S.ex.warnOnce && !S.warned){
     S.warned = true;
     S.armAt = Date.now() + 2500;
@@ -965,14 +1094,12 @@ function arm(){
   S.lastTouch = Date.now();
   let initW = window.innerWidth, initH = window.innerHeight, topSwipeStart = false;
 
-  // إعادة الوضوح عند اللمس الطبيعي (لحماية الطالب الذي يفكر في السؤال دون ظلم)
   ['touchstart','pointerdown','mousedown','keydown'].forEach(ev=>{
     document.addEventListener(ev,()=>{
       if(S && !S.done && !S.locked){ S.lastTouch = Date.now(); blurOff(); }
     },{passive:true});
   });
 
-  // فحص سريع للتركيز + طمس بصري لطيف بعد 20 ثانية من السكون (بدون قفل)
   loops.push(setInterval(()=>{
     if(!S || S.done || S.locked || Date.now() < S.armAt) return;
     if(document.hidden || !document.hasFocus()){ blurOn(); return V('فتح تطبيق عائم أو فقدان التركيز'); }
