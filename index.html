@@ -1480,24 +1480,33 @@ async function violation(reason){
 
 function arm(){
   const V=r=>violation(r);
-  const blurOn=()=>{if(S&&!S.done)app.style.filter='blur(28px)'};
+  const blurOn=()=>{if(S&&!S.done)app.style.filter='blur(26px)'};
+  const blurOff=()=>{if(S&&!S.done&&!S.locked)app.style.filter='none'};
   S.armAt=Date.now()+2000;
-  let initW=window.innerWidth,initH=window.innerHeight;
+  S.lastTouch=Date.now();
+  let initW=window.innerWidth, initH=window.innerHeight, topSwipeStart=false;
 
-  // 1. فحص دوري سريع كل 400 مللي ثانية: يكتشف أي نافذة عائمة نشطة فوق المتصفح
+  // إعادة الوضوح فوراً عند أي لمسة طبيعية من الطالب دون أي عقوبة
+  ['touchstart','pointerdown','mousedown','keydown'].forEach(ev=>{
+    document.addEventListener(ev,()=>{
+      if(S&&!S.done&&!S.locked){ S.lastTouch=Date.now(); blurOff(); }
+    },{passive:true});
+  });
+
+  // طمس بصري فقط بعد 20 ثانية من عدم اللمس (بدون قفل الاختبار أبداً)
   loops.push(setInterval(()=>{
     if(!S||S.done||S.locked||Date.now()<S.armAt)return;
     if(document.hidden || !document.hasFocus()){
-      blurOn();
-      V('فتح تطبيق عائم أو فقدان التركيز أثناء الاختبار');
+      blurOn(); return V('فتح تطبيق عائم أو فقدان التركيز أثناء الاختبار');
     }
-  },400));
+    if((Date.now() - S.lastTouch) > 20000){
+      blurOn(); // طمس فقط لمنع تصوير الشاشة أثناء انشغال الطالب بتطبيق عائم، وتزول بمجرد لمس الشاشة
+    }
+  },800));
 
-  // 2. القفل الفوري (بدون أي تأخير) عند لمس تطبيق عائم أو شريط الإشعارات
   window.addEventListener('blur',()=>{
     if(!S||S.done||S.locked||Date.now()<S.armAt)return;
-    blurOn();
-    V('التفاعل مع نافذة عائمة أو تطبيق خارجي');
+    blurOn(); V('التفاعل مع نافذة عائمة أو تطبيق خارجي');
   });
 
   document.addEventListener('visibilitychange',()=>{
@@ -1510,17 +1519,21 @@ function arm(){
     }
   });
 
-  // 3. رصد إيماءة 3 أصابع للتصوير + رصد سحب الشريط الجانبي لفتح التطبيقات العائمة
+  // رصد إيماءة 3 أصابع + سحب الشريط الجانبي + سحب شريط الإشعارات من الأعلى
   document.addEventListener('touchstart',e=>{
     if(!S||S.done||Date.now()<S.armAt)return;
-    if(e.touches && e.touches.length>=3){
-      blurOn();
-      return V('محاولة تصوير الشاشة بإيماءة اللمس');
-    }
+    if(e.touches && e.touches.length>=3){ blurOn(); return V('محاولة تصوير الشاشة بإيماءة اللمس'); }
     const t = e.touches[0];
-    if(t && (t.clientX < 14 || t.clientX > window.innerWidth - 14)){
-      blurOn();
-      return V('محاولة سحب الشريط الجانبي لفتح نافذة عائمة');
+    if(!t) return;
+    if(t.clientX < 12 || t.clientX > window.innerWidth - 12){
+      blurOn(); return V('محاولة سحب الشريط الجانبي لفتح نافذة عائمة');
+    }
+    topSwipeStart = (t.clientY < 22);
+  },{passive:true});
+
+  document.addEventListener('touchmove',e=>{
+    if(topSwipeStart && e.touches[0] && e.touches[0].clientY > 65){
+      topSwipeStart = false; blurOn(); V('محاولة سحب شريط الإشعارات العلوي');
     }
   },{passive:true});
 
