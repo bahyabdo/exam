@@ -1021,11 +1021,11 @@ async function results(id){
 const fmtAns=(q,v)=>v===undefined||v===null||v===''?'لم يجب':q.type==='mcq'?q.options[v]:q.type==='multi'?(v||[]).map(i=>q.options[i]).join('، '):q.type==='tf'?(v===0?'صح':'خطأ'):v;
 
 /* ============== لوحة تحكم الأدمن / الروت المتقدمة ============== */
-async function rootPanel(){
+async function rootPanel(onlyInactive=false){
   if(!realIsRoot()){ toast('⛔ صلاحية مرفوضة'); return home(); }
   impTeacher = null;
   clearLoops();
-  show('<div class="card center mut">👑 جاري تحميل بيانات النظام الشاملة...</div>', 'root');
+  show('<div class="card center mut">👑 جاري تحميل بيانات النظام وتحليل نشاط الحسابات...</div>', 'root');
 
   const [teachersObj, examsObj, attemptsObj, cfgObj] = await Promise.all([
     fb('teachers').catch(()=>({})),
@@ -1035,14 +1035,36 @@ async function rootPanel(){
   ]);
   sysCfg = {maintenance:!!cfgObj?.maintenance, announcement:cfgObj?.announcement||''};
 
-  const teachersList = Object.values(teachersObj || {});
+  const now = Date.now();
+  const INACTIVE_MS = 60 * 24 * 60 * 60 * 1000; // 60 يوماً
   const examsList = Object.values(examsObj || {});
+  const teachersList = Object.values(teachersObj || {}).map(t => {
+    const tExams = examsList.filter(e => e && e.owner === t.id);
+    const maxExamAct = tExams.reduce((mx, e) => Math.max(mx, e.lastUsed || e.created || 0), 0);
+    const lastAct = Math.max(t.lastLogin || 0, maxExamAct);
+    const daysIdle = lastAct ? Math.floor((now - lastAct) / (24 * 60 * 60 * 1000)) : 999;
+    const isMe = String(t.email||'').toLowerCase() === ROOT_EMAIL;
+    const isIdle = !isMe && (!lastAct || (now - lastAct) > INACTIVE_MS);
+    return {...t, tExams, lastAct, daysIdle, isIdle, isMe};
+  }).sort((a,b) => (a.lastAct || 0) - (b.lastAct || 0)); // الأقدم نشاطاً يظهر أولاً
+
+  const idleTeachers = teachersList.filter(t => t.isIdle);
+  const displayedTeachers = onlyInactive ? idleTeachers : teachersList;
+
   let totalAttempts = 0;
   Object.values(attemptsObj || {}).forEach(exAtts => { totalAttempts += Object.keys(exAtts || {}).length; });
 
+  const fmtDate = ts => {
+    if(!ts) return 'لم يسجل نشاطاً';
+    const d = new Date(ts).toLocaleDateString('ar-EG', {year:'numeric', month:'2-digit', day:'2-digit'});
+    const days = Math.floor((now - ts) / (24 * 60 * 60 * 1000));
+    const ago = days === 0 ? 'اليوم' : days === 1 ? 'منذ يوم' : `منذ ${days} يوم`;
+    return `${ago} (${d})`;
+  };
+
   show(`<div class="card" style="background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;border:none">
     <div class="row between">
-      <div><span class="badge" style="background:#fbbf24;color:#0f172a">صلاحيات الروت العليا (ROOT)</span><h1 style="color:#fff;margin-top:6px">👑 لوحة التحكم الشاملة — منصة Itqan</h1><span style="color:#94a3b8;font-size:13px">مرحباً بك يا الباهي — تحكم كامل في النظام، الدعم الفني، الصيانة، والإعلانات</span></div>
+      <div><span class="badge" style="background:#fbbf24;color:#0f172a">صلاحيات الروت العليا (ROOT)</span><h1 style="color:#fff;margin-top:6px">👑 لوحة التحكم الشاملة — منصة Itqan</h1><span style="color:#94a3b8;font-size:13px">مراقبة نشاط الحسابات، تنظيف قاعدة البيانات، الصيانة، والدعم الفني</span></div>
       <div class="row">
         <button class="btn ok sm" id="fullBkBtn">💾 نسخة احتياطية كاملة (JSON)</button>
         <button class="btn sm" onclick="dash()">العودة للوحة المعلم</button>
@@ -1072,31 +1094,35 @@ async function rootPanel(){
 
   <div class="grid4" style="margin-bottom:16px">
     <div class="stat-box"><div class="mut">إجمالي المعلمين</div><div class="stat-val">${teachersList.length}</div><div class="mut">حساب مسجل</div></div>
-    <div class="stat-box"><div class="mut">إجمالي الاختبارات</div><div class="stat-val">${examsList.length}</div><div class="mut">اختبار على المنصة</div></div>
-    <div class="stat-box"><div class="mut">الجلسات المفتوحة الآن</div><div class="stat-val">${examsList.filter(e=>e.open).length}</div><div class="mut">جلسة حية نشطة</div></div>
+    <div class="stat-box"><div class="mut">الحسابات الخاملة (+60 يوم)</div><div class="stat-val" style="background:linear-gradient(90deg,#ef4444,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent">${idleTeachers.length}</div><div class="mut">مرشحة للتنظيف</div></div>
+    <div class="stat-box"><div class="mut">إجمالي الاختبارات</div><div class="stat-val">${examsList.length}</div><div class="mut">مفتوحة الآن: ${examsList.filter(e=>e.open).length}</div></div>
     <div class="stat-box"><div class="mut">إجمالي محاولات الطلاب</div><div class="stat-val">${totalAttempts}</div><div class="mut">مختبر مسجل</div></div>
   </div>
 
   <div class="card">
-    <h2>👨‍🏫 إدارة حسابات المعلمين والدعم الفني (${teachersList.length})</h2>
+    <div class="row between" style="margin-bottom:12px">
+      <h2 style="margin:0">👨‍🏫 سجل نشاط المعلمين والحسابات الخاملة (${displayedTeachers.length})</h2>
+      <div class="row">
+        <button class="btn sm ${!onlyInactive?'pri':''}" onclick="rootPanel(false)">الكل (${teachersList.length})</button>
+        <button class="btn sm ${onlyInactive?'bad':''}" onclick="rootPanel(true)">💤 الخاملة فقط (${idleTeachers.length})</button>
+      </div>
+    </div>
     <div class="table-wrap">
       <table>
-        <tr><th>اسم المعلم</th><th>البريد الإلكتروني</th><th>الاختبارات</th><th>الحالة</th><th>إجراءات التحكم والدعم</th></tr>
-        ${teachersList.map(t => {
-          const tExams = examsList.filter(e => e.owner === t.id);
-          const isMe = String(t.email||'').toLowerCase() === ROOT_EMAIL;
-          return `<tr>
-            <td><b>${esc(t.name)}</b> ${isMe?'<span class="badge b-info">المالك</span>':''}</td>
-            <td dir="ltr">${esc(t.email)}</td>
-            <td>${tExams.length} اختبار</td>
-            <td><span class="badge ${t.banned?'b-bad':'b-ok'}">${t.banned?'محظور':'نشط'}</span></td>
-            <td class="row">
-              ${!isMe ? `<button class="btn pri sm" onclick="rootLoginAs('${t.id}')">🔑 الدخول كمعلم</button>` : ''}
-              <button class="btn sm" onclick="rootInspectTeacher('${t.id}')">👁️ الاختبارات</button>
-              ${!isMe ? `<button class="btn ${t.banned?'ok':'bad'} sm" onclick="rootToggleBan('${t.id}', ${!t.banned})">${t.banned?'🔓 فك الحظر':'🚫 حظر'}</button>` : ''}
-            </td>
-          </tr>`;
-        }).join('')}
+        <tr><th>اسم المعلم</th><th>البريد الإلكتروني</th><th>تاريخ آخر نشاط</th><th>الاختبارات</th><th>الحالة</th><th>إجراءات التحكم والتنظيف</th></tr>
+        ${displayedTeachers.map(t => `<tr>
+          <td><b>${esc(t.name)}</b> ${t.isMe?'<span class="badge b-info">المالك</span>':''}</td>
+          <td dir="ltr">${esc(t.email)}</td>
+          <td><span style="font-size:13px;font-weight:700;color:${t.isIdle?'#b91c1c':'var(--tx)'}">${fmtDate(t.lastAct)}</span></td>
+          <td>${t.tExams.length} اختبار</td>
+          <td>${t.banned?'<span class="badge b-bad">محظور</span>':t.isIdle?'<span class="badge b-warn">💤 خامل</span>':'<span class="badge b-ok">🟢 نشط</span>'}</td>
+          <td class="row">
+            ${!t.isMe ? `<button class="btn pri sm" onclick="rootLoginAs('${t.id}')">🔑 دخول</button>` : ''}
+            <button class="btn sm" onclick="rootInspectTeacher('${t.id}')">👁️ الاختبارات</button>
+            ${!t.isMe ? `<button class="btn ${t.banned?'ok':'warn'} sm" onclick="rootToggleBan('${t.id}', ${!t.banned})">${t.banned?'🔓 فك الحظر':'🚫 حظر'}</button>` : ''}
+            ${!t.isMe ? `<button class="btn bad sm" onclick="rootDeleteTeacher('${t.id}', '${esc(t.name)}')">🗑️ حذف نهائي</button>` : ''}
+          </td>
+        </tr>`).join('')}
       </table>
     </div>
   </div>
@@ -1105,13 +1131,14 @@ async function rootPanel(){
     <h2>📚 جميع الاختبارات على المنصة (${examsList.length})</h2>
     <div class="table-wrap">
       <table>
-        <tr><th>عنوان الاختبار</th><th>المعلم</th><th>الحالة</th><th>الطلاب</th><th>تحكم سريع</th></tr>
+        <tr><th>عنوان الاختبار</th><th>المعلم</th><th>آخر استخدام</th><th>الحالة</th><th>الطلاب</th><th>تحكم سريع</th></tr>
         ${examsList.map(e => {
           const owner = teachersList.find(t => t.id === e.owner);
           const attCnt = Object.keys((attemptsObj||{})[e.id] || {}).length;
           return `<tr>
             <td><b>${esc(e.title)}</b></td>
             <td>${esc(owner?.name || 'غير معروف')}</td>
+            <td><span style="font-size:12.5px">${fmtDate(e.lastUsed || e.created)}</span></td>
             <td><span class="badge ${e.open?'b-ok':'b-warn'}">${e.open?'🟢 مفتوح':'مغلق'}</span></td>
             <td>${attCnt} طالب</td>
             <td class="row">
@@ -1130,20 +1157,20 @@ async function rootPanel(){
     await fb('sysConfig', 'PATCH', {maintenance: nextState});
     sysCfg.maintenance = nextState;
     toast(nextState ? 'تم تفعيل وضع الصيانة الشامل' : 'تم إيقاف وضع الصيانة وإعادة فتح المنصة');
-    rootPanel();
+    rootPanel(onlyInactive);
   };
   $('#annSave').onclick = async () => {
     const txt = $('#annInp').value.trim();
     await fb('sysConfig', 'PATCH', {announcement: txt});
     sysCfg.announcement = txt;
     toast('تم نشر الإعلان العام بنجاح');
-    rootPanel();
+    rootPanel(onlyInactive);
   };
   if($('#annClr')) $('#annClr').onclick = async () => {
     await fb('sysConfig', 'PATCH', {announcement: ''});
     sysCfg.announcement = '';
     toast('تم مسح الإعلان');
-    rootPanel();
+    rootPanel(onlyInactive);
   };
   $('#fullBkBtn').onclick = async () => {
     toast('جاري تجهيز النسخة الاحتياطية الكاملة...');
@@ -1168,9 +1195,9 @@ async function rootLoginAs(tid){
 
 async function rootForceClose(eid){
   if(!realIsRoot()) return;
-  if(!confirm('هل تريد إغلاق هذا الاختبار فوراً ومنع دخول أي طالب جديد؟')) return;
+  if(!confirm('هل تريد إغلاق هذه الجلسة الحية فوراً ومنع دخول أي طالب جديد؟')) return;
   await fb(`exams/${eid}`, 'PATCH', {open: false});
-  toast('🛑 تم إغلاق الاختبار فوراً');
+  toast('🛑 تم إغلاق الجلسة الحية فوراً');
   rootPanel();
 }
 
@@ -1179,6 +1206,22 @@ async function rootToggleBan(tid, banState){
   if(!confirm(banState ? 'هل تريد حظر هذا المعلم ومنعه من الدخول للمنصة؟' : 'هل تريد فك الحظر عن هذا المعلم؟')) return;
   await fb(`teachers/${tid}`, 'PATCH', {banned: banState});
   toast(banState ? 'تم حظر الحساب بنجاح' : 'تم فك الحظر وتفعيل الحساب');
+  rootPanel();
+}
+
+async function rootDeleteTeacher(tid, tName){
+  if(!realIsRoot()) return;
+  if(!confirm(`⚠️ تحذير: هل تريد حذف حساب المعلم "${tName}" نهائياً؟\nسيتم مسح بيانات الحساب وجميع اختباراته ونتائج طلابه وبنك أسئلته لتخفيف قاعدة البيانات!`)) return;
+  toast('جاري حذف الحساب وتنظيف بياناته من قاعدة البيانات...');
+  const allExams = await fb('exams') || {};
+  const tExams = Object.values(allExams).filter(e => e && e.owner === tid);
+  for(const e of tExams){
+    await fb(`exams/${e.id}`, 'DELETE').catch(()=>{});
+    await fb(`attempts/${e.id}`, 'DELETE').catch(()=>{});
+  }
+  await fb(`qbank/${tid}`, 'DELETE').catch(()=>{});
+  await fb(`teachers/${tid}`, 'DELETE').catch(()=>{});
+  toast(`✅ تم حذف حساب "${tName}" و (${tExams.length}) اختبار تابع له بنجاح`);
   rootPanel();
 }
 
@@ -1437,36 +1480,50 @@ async function violation(reason){
 
 function arm(){
   const V=r=>violation(r);
-  const blurOn=()=>{if(S&&!S.done)app.style.filter='blur(25px)'};
-  const blurOff=()=>{if(S&&!S.done&&!S.locked)app.style.filter='none'};
+  const blurOn=()=>{if(S&&!S.done)app.style.filter='blur(28px)'};
   S.armAt=Date.now()+2000;
-  let initW=window.innerWidth,initH=window.innerHeight,blurT=null;
+  let initW=window.innerWidth,initH=window.innerHeight;
 
-  document.addEventListener('visibilitychange',()=>{
-    if(document.hidden){blurOn();V('ترك الصفحة / تبديل التبويب أو التطبيق')}
-  });
+  // 1. فحص دوري سريع كل 400 مللي ثانية: يكتشف أي نافذة عائمة نشطة فوق المتصفح
+  loops.push(setInterval(()=>{
+    if(!S||S.done||S.locked||Date.now()<S.armAt)return;
+    if(document.hidden || !document.hasFocus()){
+      blurOn();
+      V('فتح تطبيق عائم أو فقدان التركيز أثناء الاختبار');
+    }
+  },400));
+
+  // 2. القفل الفوري (بدون أي تأخير) عند لمس تطبيق عائم أو شريط الإشعارات
   window.addEventListener('blur',()=>{
     if(!S||S.done||S.locked||Date.now()<S.armAt)return;
     blurOn();
-    clearTimeout(blurT);
-    blurT=setTimeout(()=>{
-      if(document.hidden||!document.hasFocus()) V('فقدان التركيز / فتح مساعد ذكي أو نافذة خارجية');
-      else blurOff();
-    },600);
+    V('التفاعل مع نافذة عائمة أو تطبيق خارجي');
   });
-  window.addEventListener('focus',()=>{clearTimeout(blurT);blurOff()});
+
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden){blurOn();V('ترك الصفحة / تبديل التطبيق')}
+  });
+
   window.addEventListener('resize',()=>{
-    if(S&&!S.done&&Date.now()>S.armAt&&(isSplitScreen()||Math.abs(window.innerWidth-initW)>100||Math.abs(window.innerHeight-initH)>120)){
-      blurOn();V('محاولة تقسيم الشاشة أو تغيير حجم النافذة');
+    if(S&&!S.done&&Date.now()>S.armAt&&(isSplitScreen()||Math.abs(window.innerWidth-initW)>90||Math.abs(window.innerHeight-initH)>110)){
+      blurOn();V('محاولة تقسيم الشاشة أو تصغير النافذة');
     }
   });
-  // رصد إيماءة 3 أصابع لتصوير الشاشة على الهواتف
+
+  // 3. رصد إيماءة 3 أصابع للتصوير + رصد سحب الشريط الجانبي لفتح التطبيقات العائمة
   document.addEventListener('touchstart',e=>{
-    if(S&&!S.done&&e.touches&&e.touches.length>=3){
+    if(!S||S.done||Date.now()<S.armAt)return;
+    if(e.touches && e.touches.length>=3){
       blurOn();
-      V('محاولة تصوير الشاشة بإيماءة اللمس');
+      return V('محاولة تصوير الشاشة بإيماءة اللمس');
+    }
+    const t = e.touches[0];
+    if(t && (t.clientX < 14 || t.clientX > window.innerWidth - 14)){
+      blurOn();
+      return V('محاولة سحب الشريط الجانبي لفتح نافذة عائمة');
     }
   },{passive:true});
+
   window.addEventListener('pagehide',()=>V('إغلاق أو تحديث الصفحة'));
   window.addEventListener('beforeunload',e=>{if(S&&!S.done){e.preventDefault();e.returnValue=''}});
   document.addEventListener('fullscreenchange',()=>{
