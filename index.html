@@ -79,7 +79,6 @@
     .big{font-size:52px;margin-bottom:8px}
     .ann-bar{background:linear-gradient(90deg,#fef3c7,#fde68a);color:#92400e;padding:9px 16px;text-align:center;font-weight:800;font-size:13.5px;border-bottom:1px solid #fcd34d}
     .q-text{font-size:var(--qsize);line-height:1.65;margin:14px 0}
-    /* الحماية القصوى ضد النسخ وتحديد النصوص باللمس المطول */
     body.exam,body.exam *{
       -webkit-user-select:none!important;
       -moz-user-select:none!important;
@@ -223,11 +222,11 @@ function show(html, mode='home'){
     nav.innerHTML = `<span class="badge b-info">وضع الاختبار الآمن</span>`;
   } else if(user){
     nav.innerHTML = `
-      ${realIsRoot() ? `<button class="btn warn sm" onclick="rootPanel()">👑 إدارة النظام</button>` : ''}
+      ${realIsRoot() ? `<button class="btn warn sm" onclick="rootPanel()">👑 إدارة الروت</button>` : ''}
       <button class="btn sm" onclick="dash()">لوحة المعلم</button>
       <button class="btn bad sm" onclick="logout()">خروج</button>`;
   } else {
-    nav.innerHTML = `<button class="btn pri sm" onclick="teacherLogin()">دخول المعلمين</button>`;
+    nav.innerHTML = `<button class="btn pri sm" onclick="teacherLoginPrompt()">دخول المعلمين</button>`;
   }
   app.innerHTML = html;
   renderMath();
@@ -240,7 +239,7 @@ function home(){
     return show(`<div class="card center" style="max-width:500px;margin:8vh auto;padding:34px">
       <div class="big">🛠️</div><h2>المنصة في وضع الصيانة والتحديث</h2>
       <p class="mut">نقوم حالياً بإجراء تحسينات تقنية لضمان أفضل تجربة اختبار آمنة. يرجى المحاولة بعد قليل.</p>
-      <button class="btn sm" style="margin-top:16px" onclick="teacherLogin()">دخول الإدارة</button>
+      <button class="btn sm" style="margin-top:16px" onclick="teacherLoginPrompt()">دخول الإدارة</button>
     </div>`, 'home');
   }
   show(`<div class="card center" style="padding:34px 20px;background:linear-gradient(135deg,#0f172a,#1e1b4b);color:#fff;border:none">
@@ -249,7 +248,7 @@ function home(){
     <p style="color:#cbd5e1;max-width:640px;margin:0 auto 22px">بيئة اختبارات محصّنة بالسياج الجغرافي للقاعات، قفل الجلسة الواحدة، العلامة المائية المتحركة، الاستيراد من Excel، والحفظ التلقائي.</p>
     <div class="row" style="justify-content:center;gap:14px">
       <button class="btn pri" style="padding:13px 26px;font-size:16px" onclick="sJoin()">🎓 دخول طالب للاختبار</button>
-      <button class="btn" style="padding:13px 24px;font-size:16px" onclick="${user?'dash()':'teacherLogin()'}">👨‍🏫 ${user?'لوحة تحكم المعلم':'دخول / تسجيل معلم'}</button>
+      <button class="btn" style="padding:13px 24px;font-size:16px" onclick="${user?'dash()':'teacherLoginPrompt()'}">👨‍🏫 ${user?'لوحة تحكم المعلم':'دخول / تسجيل معلم'}</button>
     </div>
   </div>
   <div class="grid4">
@@ -261,25 +260,54 @@ function home(){
   <div class="card center mut" style="font-size:13px">تطوير وتصميم: <b>الباهي عبدالرحمن</b> — منصة إتقان للتقييم الرقمي الآمن</div>`, 'home');
 }
 
-/* ================= مصادقة المعلمين ================= */
-async function teacherLogin(){
+/* ================= نافذة تسجيل دخول مرنة (Google أو بريد وكلمة مرور) ================= */
+function teacherLoginPrompt(){
+  show(`<div style="max-width:440px;margin:4vh auto"><div class="card center" style="padding:30px">
+    <h2>👨‍🏫 بوابة المعلمين والإدارة</h2>
+    <p class="mut" style="margin-bottom:20px">اختر طريقة تسجيل الدخول المناسبة لك لحسابك على المنصة:</p>
+    <button class="btn pri" style="width:100%;margin-bottom:12px;padding:12px" onclick="teacherGoogleLogin()">🌐 تسجيل الدخول عبر Google (سريع)</button>
+    <div style="margin:16px 0;border-top:1px dashed var(--bd);padding-top:16px">
+      <label style="text-align:right">البريد الإلكتروني</label><input id="lgEmail" type="email" placeholder="name@example.com" dir="ltr">
+      <label style="text-align:right;margin-top:10px">كلمة المرور</label><input id="lgPass" type="password" placeholder="••••••••" dir="ltr">
+      <button class="btn ok" style="width:100%;margin-top:14px;padding:12px" onclick="teacherEmailLogin()">🔐 دخول بالبريد وكلمة المرور</button>
+    </div>
+    <button class="btn sm" style="margin-top:10px" onclick="home()">العودة للرئيسية</button>
+  </div></div>`, 'home');
+}
+
+async function teacherGoogleLogin(){
   try{
     const provider = new firebase.auth.GoogleAuthProvider();
     const res = await auth.signInWithPopup(provider);
     user = res.user;
-    const tRef = await fb(`teachers/${user.uid}`);
-    if(tRef && tRef.banned){
-      await auth.signOut(); user = null;
-      return toast('⛔ تم حظر هذا الحساب من قبل إدارة المنصة.');
-    }
-    await fb(`teachers/${user.uid}`, 'PATCH', {
-      id: user.uid,
-      name: user.displayName || user.email.split('@')[0],
-      email: user.email,
-      lastLogin: Date.now()
-    });
-    dash();
-  }catch(e){ toast('تعذر تسجيل الدخول: ' + e.message); }
+    await processTeacherLogin(user);
+  }catch(e){ toast('تعذر تسجيل الدخول بجوجل: ' + e.message); }
+}
+
+async function teacherEmailLogin(){
+  const email = $('#lgEmail')?.value.trim();
+  const pass = $('#lgPass')?.value.trim();
+  if(!email || !pass) return toast('أدخل البريد وكلمة المرور أولاً');
+  try{
+    const res = await auth.signInWithEmailAndPassword(email, pass);
+    user = res.user;
+    await processTeacherLogin(user);
+  }catch(e){ toast('خطأ في البيانات أو الحساب غير موجود: ' + e.message); }
+}
+
+async function processTeacherLogin(u){
+  const tRef = await fb(`teachers/${u.uid}`);
+  if(tRef && tRef.banned){
+    await auth.signOut(); user = null;
+    return toast('⛔ تم حظر هذا الحساب من قبل إدارة المنصة.');
+  }
+  await fb(`teachers/${u.uid}`, 'PATCH', {
+    id: u.uid,
+    name: u.displayName || u.email.split('@')[0],
+    email: u.email,
+    lastLogin: Date.now()
+  });
+  dash();
 }
 
 async function logout(){
@@ -288,7 +316,7 @@ async function logout(){
 
 /* ================= لوحة تحكم المعلم ================= */
 async function dash(){
-  if(!user) return teacherLogin();
+  if(!user) return teacherLoginPrompt();
   clearLoops();
   const tid = curTeacherId();
   show('<div class="card center mut">جاري تحميل اختباراتك...</div>', 'teacher');
@@ -297,7 +325,7 @@ async function dash(){
 
   show(`${impTeacher ? `<div class="ann-bar">🕵️ وضع الدعم الفني: أنت تتصفح حساب المعلم <b>${esc(impTeacher.name)}</b> <button class="btn sm" onclick="rootPanel()">العودة للروت</button></div>` : ''}
   <div class="card row between">
-    <div><h2>👋 أهلاً بك، ${esc(impTeacher ? impTeacher.name : user.displayName)}</h2><span class="mut">إدارة الاختبارات، السياج الجغرافي، والمراقبة الحية</span></div>
+    <div><h2>👋 أهلاً بك، ${esc(impTeacher ? impTeacher.name : user.displayName || user.email.split('@')[0])}</h2><span class="mut">إدارة الاختبارات، السياج الجغرافي، والمراقبة الحية</span></div>
     <button class="btn pri" onclick="builder()">➕ إنشاء اختبار جديد</button>
   </div>
   ${myExams.length ? myExams.map(e => {
@@ -400,9 +428,9 @@ function handleExcelImport(file, ex, renderCallback){
   reader.readAsArrayBuffer(file);
 }
 
-/* ================= منشئ الاختبارات الاحترافي (مع حفظ الحقول اللحظي والسياج الجغرافي و Excel) ================= */
+/* ================= منشئ الاختبارات الاحترافي ================= */
 async function builder(eid=null){
-  if(!user) return teacherLogin();
+  if(!user) return teacherLoginPrompt();
   const tid = curTeacherId();
   let ex = eid ? await fb(`exams/${eid}`) : {
     id: rid(8), owner: tid, title: '', duration: 20, qTimer: 0,
@@ -593,9 +621,9 @@ async function builder(eid=null){
   renderB();
 }
 
-/* ================= لوحة بدء الاختبار والمراقبة الحية التفاعلية ================= */
+/* ================= لوحة المراقبة الحية ================= */
 async function live(eid){
-  if(!user) return teacherLogin();
+  if(!user) return teacherLoginPrompt();
   clearLoops();
   const ex = await fb(`exams/${eid}`);
   if(!ex) return dash();
@@ -688,9 +716,9 @@ async function live(eid){
   loops.push(setInterval(renderLive, 4000));
 }
 
-/* ================= النتائج، مؤشر السرعة الخارقة، وتصدير Excel ================= */
+/* ================= النتائج والتحليل وتصدير Excel ================= */
 async function results(eid){
-  if(!user) return teacherLogin();
+  if(!user) return teacherLoginPrompt();
   const [ex, attsObj] = await Promise.all([fb(`exams/${eid}`), fb(`attempts/${eid}`)]);
   const atts = Object.values(attsObj || {}).sort((a,b)=>(b.score||0)-(a.score||0));
 
@@ -796,11 +824,11 @@ async function printStudentPaper(eid, aid){
   w.document.close();
 }
 
-/* ================= لوحة تحكم الروت (مراقبة الحسابات الخاملة + التنظيف) ================= */
+/* ================= لوحة تحكم الروت (ROOT) المحدثة ================= */
 async function rootPanel(onlyInactive=false){
   if(!realIsRoot()){ toast('⛔ صلاحية مرفوضة'); return home(); }
   impTeacher = null; clearLoops();
-  show('<div class="card center mut">👑 جاري تحليل نشاط الحسابات وقاعدة البيانات...</div>', 'root');
+  show(`<div class="card center mut">👑 جاري تحليل نشاط الحسابات وقاعدة البيانات...</div>`, 'root');
 
   const [teachersObj, examsObj, cfgObj] = await Promise.all([
     fb('teachers').catch(()=>({})), fb('exams').catch(()=>({})), fb('sysConfig').catch(()=>({}))
@@ -964,7 +992,6 @@ function sJoin(pc=''){
       if(att && att.status === 'submitted') return toast('لقد قمت بتسليم هذا الاختبار مسبقاً');
       if(att && att.status === 'locked') return toast('تم قفل اختبارك بسبب مخالفة، راجع المعلم');
 
-      // قفل الجلسة الواحدة (منع الدخول المزدوج من جهاز آخر بنفس الرقم الجامعي)
       const mySessionToken = localStorage.getItem(`itqan_tok_${ex.id}_${normSid(sid)}`) || rid(12);
       if(att && att.sessionToken && att.sessionToken !== mySessionToken){
         await fb(`attempts/${ex.id}/${att.id}`, 'PATCH', {status:'locked', finishedAt:Date.now(), lastViolation:'محاولة دخول مزدوجة من جهاز آخر'});
@@ -998,7 +1025,6 @@ function startExam(ex, att){
   if(cached && cached.answers) S.ans = {...cached.answers, ...S.ans};
 
   arm();
-  // علامة مائية ديناميكية متحركة باسم الطالب ورقمه الجامعي
   const wm = document.createElement('div'); wm.id = 'wm';
   wm.style.backgroundImage = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='310' height='180'><text x='10' y='90' fill='rgba(15,23,42,0.09)' font-family='sans-serif' font-weight='bold' font-size='15' transform='rotate(-22 155 95)'>Itqan | ${att.name} (${att.sid})</text></svg>`)}")`;
   document.body.appendChild(wm);
@@ -1057,10 +1083,10 @@ function startExam(ex, att){
 
     app.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{ S.ans[q.id]=+b.dataset.o; sync(); render(); });
     app.querySelectorAll('[data-jump]').forEach(b=>b.onclick=()=>goQ(+b.dataset.jump));
-    if($('#ta')) $('#ta').oninput = e => { S.ans[q.id]=e.target.value; saveLocalAttempt(ex.id, att.id, {answers:S.ans, status:'active'}); };
-    if($('#pv')) $('#pv').onclick = () => goQ(S.idx-1);
-    if($('#nx')) $('#nx').onclick = () => goQ(S.idx+1);
-    if($('#sb')) $('#sb').onclick = () => { if(confirm('هل أنت متأكد من تسليم إجاباتك نهائياً؟')) submit(); };
+    if($('#ta')) $('#ta'].oninput = e => { S.ans[q.id]=e.target.value; saveLocalAttempt(ex.id, att.id, {answers:S.ans, status:'active'}); };
+    if($('#pv')) $('#pv'].onclick = () => goQ(S.idx-1);
+    if($('#nx')) $('#nx'].onclick = () => goQ(S.idx+1);
+    if($('#sb')) $('#sb'].onclick = () => { if(confirm('هل أنت متأكد من تسليم إجاباتك نهائياً؟')) submit(); };
     renderMath();
   };
 
@@ -1202,7 +1228,7 @@ function end(st, sc, tot){
     ${explainsHtml ? `<div style="margin-top:16px"><h3>📚 ملخص الشرح والتغذية الراجعة</h3>${explainsHtml}</div>` : ''}
     <button class="btn pri" style="margin-top:20px" onclick="home()">العودة للرئيسية</button>
   </div>`, 'home');
-  if($('#certBtn')) $('#certBtn').onclick = () => downloadCertificate(S.att.name, S.att.sid, S.ex.title, sc, tot, gi);
+  if($('#certBtn')) $('#certBtn'].onclick = () => downloadCertificate(S.att.name, S.att.sid, S.ex.title, sc, tot, gi);
 }
 
 async function violation(reason){
