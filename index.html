@@ -79,6 +79,7 @@
     .big{font-size:52px;margin-bottom:8px}
     .ann-bar{background:linear-gradient(90deg,#fef3c7,#fde68a);color:#92400e;padding:9px 16px;text-align:center;font-weight:800;font-size:13.5px;border-bottom:1px solid #fcd34d}
     .q-text{font-size:var(--qsize);line-height:1.65;margin:14px 0}
+    /* الحماية القصوى ضد النسخ وتحديد النصوص باللمس المطول */
     body.exam,body.exam *{
       -webkit-user-select:none!important;
       -moz-user-select:none!important;
@@ -221,13 +222,12 @@ function show(html, mode='home'){
   if(mode === 'student'){
     nav.innerHTML = `<span class="badge b-info">وضع الاختبار الآمن</span>`;
   } else if(user){
-    const isRootUser = realIsRoot();
     nav.innerHTML = `
-      ${isRootUser ? `<button class="btn warn sm" onclick="rootPanel()">👑 لوحة المطور / الروت</button>` : ''}
+      ${realIsRoot() ? `<button class="btn warn sm" onclick="rootPanel()">👑 إدارة النظام</button>` : ''}
       <button class="btn sm" onclick="dash()">لوحة المعلم</button>
       <button class="btn bad sm" onclick="logout()">خروج</button>`;
   } else {
-    nav.innerHTML = `<button class="btn pri sm" onclick="teacherLoginPrompt()">دخول المعلمين</button>`;
+    nav.innerHTML = `<button class="btn pri sm" onclick="teacherLogin()">دخول المعلمين</button>`;
   }
   app.innerHTML = html;
   renderMath();
@@ -240,7 +240,7 @@ function home(){
     return show(`<div class="card center" style="max-width:500px;margin:8vh auto;padding:34px">
       <div class="big">🛠️</div><h2>المنصة في وضع الصيانة والتحديث</h2>
       <p class="mut">نقوم حالياً بإجراء تحسينات تقنية لضمان أفضل تجربة اختبار آمنة. يرجى المحاولة بعد قليل.</p>
-      <button class="btn sm" style="margin-top:16px" onclick="teacherLoginPrompt()">دخول الإدارة</button>
+      <button class="btn sm" style="margin-top:16px" onclick="teacherLogin()">دخول الإدارة</button>
     </div>`, 'home');
   }
   show(`<div class="card center" style="padding:34px 20px;background:linear-gradient(135deg,#0f172a,#1e1b4b);color:#fff;border:none">
@@ -249,7 +249,7 @@ function home(){
     <p style="color:#cbd5e1;max-width:640px;margin:0 auto 22px">بيئة اختبارات محصّنة بالسياج الجغرافي للقاعات، قفل الجلسة الواحدة، العلامة المائية المتحركة، الاستيراد من Excel، والحفظ التلقائي.</p>
     <div class="row" style="justify-content:center;gap:14px">
       <button class="btn pri" style="padding:13px 26px;font-size:16px" onclick="sJoin()">🎓 دخول طالب للاختبار</button>
-      <button class="btn" style="padding:13px 24px;font-size:16px" onclick="${user?'dash()':'teacherLoginPrompt()'}">👨‍🏫 ${user?'لوحة تحكم المعلم':'دخول / تسجيل معلم'}</button>
+      <button class="btn" style="padding:13px 24px;font-size:16px" onclick="${user?'dash()':'teacherLogin()'}">👨‍🏫 ${user?'لوحة تحكم المعلم':'دخول / تسجيل معلم'}</button>
     </div>
   </div>
   <div class="grid4">
@@ -261,66 +261,25 @@ function home(){
   <div class="card center mut" style="font-size:13px">تطوير وتصميم: <b>الباهي عبدالرحمن</b> — منصة إتقان للتقييم الرقمي الآمن</div>`, 'home');
 }
 
-/* ================= نافذة تسجيل دخول مرنة مع استعادة كلمة المرور ================= */
-function teacherLoginPrompt(){
-  show(`<div style="max-width:440px;margin:4vh auto"><div class="card center" style="padding:30px">
-    <h2>👨‍🏫 بوابة المعلمين والإدارة</h2>
-    <p class="mut" style="margin-bottom:20px">اختر طريقة تسجيل الدخول المناسبة لك لحسابك على المنصة:</p>
-    <button class="btn pri" style="width:100%;margin-bottom:12px;padding:12px" onclick="teacherGoogleLogin()">🌐 تسجيل الدخول عبر Google (سريع)</button>
-    <div style="margin:16px 0;border-top:1px dashed var(--bd);padding-top:16px">
-      <label style="text-align:right">البريد الإلكتروني</label><input id="lgEmail" type="email" placeholder="name@example.com" dir="ltr">
-      <label style="text-align:right;margin-top:10px">كلمة المرور</label><input id="lgPass" type="password" placeholder="••••••••" dir="ltr">
-      <div style="text-align:left;margin-top:4px"><a href="#" onclick="forgotPassword();return false;" style="font-size:12.5px;color:var(--pri);text-decoration:none;font-weight:700">هل نسيت كلمة المرور؟</a></div>
-      <button class="btn ok" style="width:100%;margin-top:12px;padding:12px" onclick="teacherEmailLogin()">🔐 دخول بالبريد وكلمة المرور</button>
-    </div>
-    <button class="btn sm" style="margin-top:10px" onclick="home()">العودة للرئيسية</button>
-  </div></div>`, 'home');
-}
-
-async function teacherGoogleLogin(){
+/* ================= مصادقة المعلمين ================= */
+async function teacherLogin(){
   try{
     const provider = new firebase.auth.GoogleAuthProvider();
     const res = await auth.signInWithPopup(provider);
     user = res.user;
-    await processTeacherLogin(user);
-  }catch(e){ toast('تعذر تسجيل الدخول بجوجل: ' + e.message); }
-}
-
-async function teacherEmailLogin(){
-  const email = $('#lgEmail')?.value.trim();
-  const pass = $('#lgPass')?.value.trim();
-  if(!email || !pass) return toast('أدخل البريد وكلمة المرور أولاً');
-  try{
-    const res = await auth.signInWithEmailAndPassword(email, pass);
-    user = res.user;
-    await processTeacherLogin(user);
-  }catch(e){ toast('خطأ في البيانات أو الحساب غير موجود: ' + e.message); }
-}
-
-async function forgotPassword(){
-  const email = $('#lgEmail')?.value.trim();
-  if(!email) return toast('أدخل بريدك الإلكتروني في الحقل أعلاه أولاً لتلقي رابط الاستعادة');
-  try{
-    await auth.sendPasswordResetEmail(email);
-    toast('✅ تم إرسال بريد استعادة كلمة المرور إلى بريدك الإلكتروني بنجاح!');
-  }catch(e){
-    toast('❌ تعذر إرسال بريد الاستعادة: ' + e.message);
-  }
-}
-
-async function processTeacherLogin(u){
-  const tRef = await fb(`teachers/${u.uid}`);
-  if(tRef && tRef.banned){
-    await auth.signOut(); user = null;
-    return toast('⛔ تم حظر هذا الحساب من قبل إدارة المنصة.');
-  }
-  await fb(`teachers/${u.uid}`, 'PATCH', {
-    id: u.uid,
-    name: u.displayName || u.email.split('@')[0],
-    email: u.email,
-    lastLogin: Date.now()
-  });
-  dash();
+    const tRef = await fb(`teachers/${user.uid}`);
+    if(tRef && tRef.banned){
+      await auth.signOut(); user = null;
+      return toast('⛔ تم حظر هذا الحساب من قبل إدارة المنصة.');
+    }
+    await fb(`teachers/${user.uid}`, 'PATCH', {
+      id: user.uid,
+      name: user.displayName || user.email.split('@')[0],
+      email: user.email,
+      lastLogin: Date.now()
+    });
+    dash();
+  }catch(e){ toast('تعذر تسجيل الدخول: ' + e.message); }
 }
 
 async function logout(){
@@ -329,7 +288,7 @@ async function logout(){
 
 /* ================= لوحة تحكم المعلم ================= */
 async function dash(){
-  if(!user) return teacherLoginPrompt();
+  if(!user) return teacherLogin();
   clearLoops();
   const tid = curTeacherId();
   show('<div class="card center mut">جاري تحميل اختباراتك...</div>', 'teacher');
@@ -338,7 +297,7 @@ async function dash(){
 
   show(`${impTeacher ? `<div class="ann-bar">🕵️ وضع الدعم الفني: أنت تتصفح حساب المعلم <b>${esc(impTeacher.name)}</b> <button class="btn sm" onclick="rootPanel()">العودة للروت</button></div>` : ''}
   <div class="card row between">
-    <div><h2>👋 أهلاً بك، ${esc(impTeacher ? impTeacher.name : user.displayName || user.email.split('@')[0])}</h2><span class="mut">إدارة الاختبارات، السياج الجغرافي، والمراقبة الحية</span></div>
+    <div><h2>👋 أهلاً بك، ${esc(impTeacher ? impTeacher.name : user.displayName)}</h2><span class="mut">إدارة الاختبارات، السياج الجغرافي، والمراقبة الحية</span></div>
     <button class="btn pri" onclick="builder()">➕ إنشاء اختبار جديد</button>
   </div>
   ${myExams.length ? myExams.map(e => {
@@ -441,9 +400,9 @@ function handleExcelImport(file, ex, renderCallback){
   reader.readAsArrayBuffer(file);
 }
 
-/* ================= منشئ الاختبارات الاحترافي ================= */
+/* ================= منشئ الاختبارات الاحترافي (مع السياج الجغرافي و Excel والتوليد المتوازن) ================= */
 async function builder(eid=null){
-  if(!user) return teacherLoginPrompt();
+  if(!user) return teacherLogin();
   const tid = curTeacherId();
   let ex = eid ? await fb(`exams/${eid}`) : {
     id: rid(8), owner: tid, title: '', duration: 20, qTimer: 0,
@@ -471,21 +430,21 @@ async function builder(eid=null){
     <div class="card">
       <h3>⚙️ الإعدادات العامة والأمان</h3>
       <div class="grid2">
-        <div><label>عنوان الاختبار</label><input id="exTitle" value="${esc(ex.title)}" oninput="ex.title=this.value" placeholder="مثال: اختبار تكنولوجيا المعلومات - الوحدة الأولى"></div>
-        <div><label>المدة الكلية (بالدقائق)</label><input id="exDur" type="number" min="1" value="${ex.duration}" oninput="ex.duration=+this.value||20"></div>
-        <div><label>مؤقت مستقل لكل سؤال بالثواني (0 = مفتوح)</label><input id="exQTimer" type="number" min="0" value="${ex.qTimer||0}" oninput="ex.qTimer=+this.value||0"></div>
+        <div><label>عنوان الاختبار</label><input id="exTitle" value="${esc(ex.title)}" placeholder="مثال: اختبار تكنولوجيا المعلومات - الوحدة الأولى"></div>
+        <div><label>المدة الكلية (بالدقائق)</label><input id="exDur" type="number" min="1" value="${ex.duration}"></div>
+        <div><label>مؤقت مستقل لكل سؤال بالثواني (0 = مفتوح)</label><input id="exQTimer" type="number" min="0" value="${ex.qTimer||0}"></div>
         <div><label>سياسة المخالفات</label>
-          <select id="exWarn" onchange="ex.warnOnce=this.value==='1'">
+          <select id="exWarn">
             <option value="0" ${!ex.warnOnce?'selected':''}>🔒 صارم: قفل فوري من أول مخالفة</option>
             <option value="1" ${ex.warnOnce?'selected':''}>⚠️ مرن: منح إنذار تحذيري أول ثم القفل في الثانية</option>
           </select>
         </div>
       </div>
       <div class="row" style="margin-top:14px;gap:18px">
-        <label style="display:inline-flex;align-items:center;gap:6px;margin:0"><input type="checkbox" id="shQ" style="width:auto" ${ex.shuffleQ?'checked':''} onchange="ex.shuffleQ=this.checked"> خلط ترتيب الأسئلة</label>
-        <label style="display:inline-flex;align-items:center;gap:6px;margin:0"><input type="checkbox" id="shO" style="width:auto" ${ex.shuffleO?'checked':''} onchange="ex.shuffleO=this.checked"> خلط ترتيب الخيارات</label>
-        <label style="display:inline-flex;align-items:center;gap:6px;margin:0"><input type="checkbox" id="alB" style="width:auto" ${ex.allowBack?'checked':''} onchange="ex.allowBack=this.checked"> السماح بالرجوع للسؤال السابق</label>
-        <label style="display:inline-flex;align-items:center;gap:6px;margin:0"><input type="checkbox" id="shS" style="width:auto" ${ex.showScore?'checked':''} onchange="ex.showScore=this.checked"> إظهار الدرجة والشرح بعد التسليم</label>
+        <label style="display:inline-flex;align-items:center;gap:6px;margin:0"><input type="checkbox" id="shQ" style="width:auto" ${ex.shuffleQ?'checked':''}> خلط ترتيب الأسئلة</label>
+        <label style="display:inline-flex;align-items:center;gap:6px;margin:0"><input type="checkbox" id="shO" style="width:auto" ${ex.shuffleO?'checked':''}> خلط ترتيب الخيارات</label>
+        <label style="display:inline-flex;align-items:center;gap:6px;margin:0"><input type="checkbox" id="alB" style="width:auto" ${ex.allowBack?'checked':''}> السماح بالرجوع للسؤال السابق</label>
+        <label style="display:inline-flex;align-items:center;gap:6px;margin:0"><input type="checkbox" id="shS" style="width:auto" ${ex.showScore?'checked':''}> إظهار الدرجة والشرح بعد التسليم</label>
       </div>
     </div>
 
@@ -506,10 +465,10 @@ async function builder(eid=null){
           <span class="badge ${ex.geo.lat?'b-ok':'b-warn'}">${ex.geo.lat ? `✅ تم تحديد القاعة (${ex.geo.lat.toFixed(5)}, ${ex.geo.lng.toFixed(5)})` : '⚠️ لم يتم التقاط موقع القاعة بعد'}</span>
         </div>
         <div class="grid3">
-          <div><label>خط العرض (Latitude)</label><input id="geoLat" type="number" step="any" dir="ltr" value="${ex.geo.lat||''}" oninput="ex.geo.lat=parseFloat(this.value)||0" placeholder="26.1642"></div>
-          <div><label>خط الطول (Longitude)</label><input id="geoLng" type="number" step="any" dir="ltr" value="${ex.geo.lng||''}" oninput="ex.geo.lng=parseFloat(this.value)||0" placeholder="32.7267"></div>
+          <div><label>خط العرض (Latitude)</label><input id="geoLat" type="number" step="any" dir="ltr" value="${ex.geo.lat||''}" placeholder="26.1642"></div>
+          <div><label>خط الطول (Longitude)</label><input id="geoLng" type="number" step="any" dir="ltr" value="${ex.geo.lng||''}" placeholder="32.7267"></div>
           <div><label>نصف قطر القاعة المسموح به</label>
-            <select id="geoRad" onchange="ex.geo.radius=+this.value||60">
+            <select id="geoRad">
               <option value="40" ${ex.geo.radius==40?'selected':''}>40 متر (فصل دراسي أو معمل)</option>
               <option value="60" ${!ex.geo.radius||ex.geo.radius==60?'selected':''}>60 متر (قاعة كبيرة - موصى به)</option>
               <option value="100" ${ex.geo.radius==100?'selected':''}>100 متر (مدرج جامعي واسع)</option>
@@ -525,9 +484,9 @@ async function builder(eid=null){
       <h3>🎲 التوليد الذكي العشوائي المتوازن (اختياري)</h3>
       <p class="mut" style="margin-bottom:10px">حدد عدد الأسئلة التي تُسحب عشوائياً لكل طالب حسب المستوى ليحصل كل طالب على نموذج فريد ومتوازن (اتركها <b>0</b> لعرض جميع الأسئلة).</p>
       <div class="grid3">
-        <div><label>🟢 أسئلة سهلة (المتاح: ${cntEasy})</label><input id="balEasy" type="number" min="0" max="${cntEasy}" value="${ex.balanced.easy||0}" oninput="ex.balanced.easy=+this.value||0"></div>
-        <div><label>🟡 أسئلة متوسطة (المتاح: ${cntMed})</label><input id="balMed" type="number" min="0" max="${cntMed}" value="${ex.balanced.med||0}" oninput="ex.balanced.med=+this.value||0"></div>
-        <div><label>🔴 أسئلة صعبة (المتاح: ${cntHard})</label><input id="balHard" type="number" min="0" max="${cntHard}" value="${ex.balanced.hard||0}" oninput="ex.balanced.hard=+this.value||0"></div>
+        <div><label>🟢 أسئلة سهلة (المتاح: ${cntEasy})</label><input id="balEasy" type="number" min="0" max="${cntEasy}" value="${ex.balanced.easy||0}"></div>
+        <div><label>🟡 أسئلة متوسطة (المتاح: ${cntMed})</label><input id="balMed" type="number" min="0" max="${cntMed}" value="${ex.balanced.med||0}"></div>
+        <div><label>🔴 أسئلة صعبة (المتاح: ${cntHard})</label><input id="balHard" type="number" min="0" max="${cntHard}" value="${ex.balanced.hard||0}"></div>
       </div>
     </div>
 
@@ -634,9 +593,9 @@ async function builder(eid=null){
   renderB();
 }
 
-/* ================= لوحة المراقبة الحية ================= */
+/* ================= لوحة بدء الاختبار والمراقبة الحية التفاعلية ================= */
 async function live(eid){
-  if(!user) return teacherLoginPrompt();
+  if(!user) return teacherLogin();
   clearLoops();
   const ex = await fb(`exams/${eid}`);
   if(!ex) return dash();
@@ -729,9 +688,9 @@ async function live(eid){
   loops.push(setInterval(renderLive, 4000));
 }
 
-/* ================= النتائج والتحليل وتعديل الدرجات وتصدير Excel ================= */
+/* ================= النتائج، مؤشر السرعة الخارقة، وتصدير Excel ================= */
 async function results(eid){
-  if(!user) return teacherLoginPrompt();
+  if(!user) return teacherLogin();
   const [ex, attsObj] = await Promise.all([fb(`exams/${eid}`), fb(`attempts/${eid}`)]);
   const atts = Object.values(attsObj || {}).sort((a,b)=>(b.score||0)-(a.score||0));
 
@@ -757,10 +716,10 @@ async function results(eid){
     </div>
   </div>
   <div class="card">
-    <h3>📋 كشف درجات الطلاب (مع إمكانية تعديل الدرجة يدوياً)</h3>
+    <h3>📋 كشف درجات الطلاب</h3>
     <div class="table-wrap">
       <table>
-        <tr><th>الترتيب</th><th>اسم الطالب</th><th>الرقم</th><th>الدرجة</th><th>التقدير</th><th>زمن الحل</th><th>الحالة / المخالفات</th><th>إدارة المعلم</th></tr>
+        <tr><th>الترتيب</th><th>اسم الطالب</th><th>الرقم</th><th>الدرجة</th><th>التقدير</th><th>زمن الحل</th><th>الحالة / المخالفات</th><th>ورقة الإجابة</th></tr>
         ${atts.map((a, i) => {
           const gi = getGradeInfo(a.score||0, a.total||1);
           const qCount = (a.order || ex.questions || []).length;
@@ -775,10 +734,7 @@ async function results(eid){
             <td><span class="badge ${gi.cls}">${gi.grade}</span></td>
             <td>${isAnomaly ? `<span class="badge b-bad" title="حل سريع جداً مقارنة بعدد الأسئلة">⚡ ${durStr}</span>` : durStr}</td>
             <td>${a.status==='submitted'?'<span class="badge b-ok">مكتمل</span>':`<span class="badge b-bad">مقفل: ${esc(a.lastViolation||'مخالفة')}</span>`}</td>
-            <td class="row">
-              <button class="btn sm" onclick="printStudentPaper('${eid}','${a.id}')">🖨️ ورقة الطالب</button>
-              <button class="btn pri sm" onclick="editStudentScore('${eid}','${a.id}', ${a.score||0}, ${a.total})">✏️ تعديل الدرجة</button>
-            </td>
+            <td><button class="btn sm" onclick="printStudentPaper('${eid}','${a.id}')">🖨️ ورقة الطالب</button></td>
           </tr>`;
         }).join('')}
       </table>
@@ -814,16 +770,6 @@ async function results(eid){
   };
 }
 
-async function editStudentScore(eid, aid, curScore, total){
-  const newScr = prompt(`أدخل الدرجة الجديدة للطالب (الدرجة الكلية: ${total}):`, curScore);
-  if(newScr === null) return;
-  const parsed = parseFloat(newScr);
-  if(isNaN(parsed) || parsed < 0 || parsed > total) return toast('⚠️ أدخل درجة صحيحة ضمن النطاق المسموح.');
-  await fb(`attempts/${eid}/${aid}`, 'PATCH', {score: parsed});
-  toast('✅ تم تحديث درجة الطالب بنجاح!');
-  results(eid);
-}
-
 async function printStudentPaper(eid, aid){
   const [ex, att] = await Promise.all([fb(`exams/${eid}`), fb(`attempts/${eid}/${aid}`)]);
   const qMap = Object.fromEntries((ex.questions||[]).map(q => [q.id, q]));
@@ -850,11 +796,11 @@ async function printStudentPaper(eid, aid){
   w.document.close();
 }
 
-/* ================= لوحة تحكم الروت (ROOT) والمطور ================= */
+/* ================= لوحة تحكم الروت (مراقبة الحسابات الخاملة + التنظيف) ================= */
 async function rootPanel(onlyInactive=false){
   if(!realIsRoot()){ toast('⛔ صلاحية مرفوضة'); return home(); }
   impTeacher = null; clearLoops();
-  show(`<div class="card center mut">👑 جاري تحليل نشاط الحسابات وقاعدة البيانات...</div>`, 'root');
+  show('<div class="card center mut">👑 جاري تحليل نشاط الحسابات وقاعدة البيانات...</div>', 'root');
 
   const [teachersObj, examsObj, cfgObj] = await Promise.all([
     fb('teachers').catch(()=>({})), fb('exams').catch(()=>({})), fb('sysConfig').catch(()=>({}))
@@ -883,7 +829,7 @@ async function rootPanel(onlyInactive=false){
 
   show(`<div class="card" style="background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;border:none">
     <div class="row between">
-      <div><span class="badge" style="background:#fbbf24;color:#0f172a">ROOT / مطور المنصة</span><h1 style="color:#fff;margin-top:6px">👑 لوحة التحكم الشاملة — منصة Itqan</h1></div>
+      <div><span class="badge" style="background:#fbbf24;color:#0f172a">ROOT</span><h1 style="color:#fff;margin-top:6px">👑 لوحة التحكم الشاملة — منصة Itqan</h1></div>
       <div class="row">
         <button class="btn ok sm" id="fullBkBtn">💾 نسخة احتياطية كاملة</button>
         <button class="btn sm" onclick="dash()">العودة للوحة المعلم</button>
@@ -1001,11 +947,12 @@ function sJoin(pc=''){
       const ex = Object.values(all).find(x => x && x.open && String(x.code) === code);
       if(!ex) return toast('كود الدخول غير صحيح أو انتهت صلاحيته');
 
+      // التحقق من السياج الجغرافي الذكي إذا فعّله المعلم
       if(ex.geo && ex.geo.enabled && ex.geo.lat && ex.geo.lng){
         toast('📍 جاري التحقق من وجودك داخل نطاق القاعة...');
         const stPos = await getCurrentGeo();
         const dist = calcDistanceMeters(ex.geo.lat, ex.geo.lng, stPos.lat, stPos.lng);
-        const accBuffer = Math.min(35, Math.round(stPos.acc || 0));
+        const accBuffer = Math.min(35, Math.round(stPos.acc || 0)); // هامش أمان لدقة GPS داخل القاعات المغلقة
         const allowedDist = (ex.geo.radius || 60) + accBuffer;
         if(dist > allowedDist){
           return toast(`🚫 عذراً، أنت خارج النطاق الجغرافي لقاعة الاختبار (${Math.round(dist)} متر عن القاعة).`);
@@ -1017,6 +964,7 @@ function sJoin(pc=''){
       if(att && att.status === 'submitted') return toast('لقد قمت بتسليم هذا الاختبار مسبقاً');
       if(att && att.status === 'locked') return toast('تم قفل اختبارك بسبب مخالفة، راجع المعلم');
 
+      // قفل الجلسة الواحدة (منع الدخول المزدوج من جهاز آخر بنفس الرقم الجامعي)
       const mySessionToken = localStorage.getItem(`itqan_tok_${ex.id}_${normSid(sid)}`) || rid(12);
       if(att && att.sessionToken && att.sessionToken !== mySessionToken){
         await fb(`attempts/${ex.id}/${att.id}`, 'PATCH', {status:'locked', finishedAt:Date.now(), lastViolation:'محاولة دخول مزدوجة من جهاز آخر'});
@@ -1050,6 +998,7 @@ function startExam(ex, att){
   if(cached && cached.answers) S.ans = {...cached.answers, ...S.ans};
 
   arm();
+  // علامة مائية ديناميكية متحركة باسم الطالب ورقمه الجامعي
   const wm = document.createElement('div'); wm.id = 'wm';
   wm.style.backgroundImage = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='310' height='180'><text x='10' y='90' fill='rgba(15,23,42,0.09)' font-family='sans-serif' font-weight='bold' font-size='15' transform='rotate(-22 155 95)'>Itqan | ${att.name} (${att.sid})</text></svg>`)}")`;
   document.body.appendChild(wm);
