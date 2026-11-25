@@ -260,7 +260,7 @@ function home(){
   <div class="card center mut" style="font-size:13px">تطوير وتصميم: <b>الباهي عبدالرحمن</b> — منصة إتقان للتقييم الرقمي الآمن</div>`, 'home');
 }
 
-/* ================= نافذة تسجيل دخول مرنة (Google أو بريد وكلمة مرور) ================= */
+/* ================= نافذة تسجيل دخول مرنة ================= */
 function teacherLoginPrompt(){
   show(`<div style="max-width:440px;margin:4vh auto"><div class="card center" style="padding:30px">
     <h2>👨‍🏫 بوابة المعلمين والإدارة</h2>
@@ -824,7 +824,7 @@ async function printStudentPaper(eid, aid){
   w.document.close();
 }
 
-/* ================= لوحة تحكم الروت (ROOT) المحدثة ================= */
+/* ================= لوحة تحكم الروت (ROOT) ================= */
 async function rootPanel(onlyInactive=false){
   if(!realIsRoot()){ toast('⛔ صلاحية مرفوضة'); return home(); }
   impTeacher = null; clearLoops();
@@ -975,7 +975,6 @@ function sJoin(pc=''){
       const ex = Object.values(all).find(x => x && x.open && String(x.code) === code);
       if(!ex) return toast('كود الدخول غير صحيح أو انتهت صلاحيته');
 
-      // التحقق من السياج الجغرافي الذكي إذا فعّله المعلم
       if(ex.geo && ex.geo.enabled && ex.geo.lat && ex.geo.lng){
         toast('📍 جاري التحقق من وجودك داخل نطاق القاعة...');
         const stPos = await getCurrentGeo();
@@ -1083,10 +1082,10 @@ function startExam(ex, att){
 
     app.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{ S.ans[q.id]=+b.dataset.o; sync(); render(); });
     app.querySelectorAll('[data-jump]').forEach(b=>b.onclick=()=>goQ(+b.dataset.jump));
-    if($('#ta')) $('#ta'].oninput = e => { S.ans[q.id]=e.target.value; saveLocalAttempt(ex.id, att.id, {answers:S.ans, status:'active'}); };
-    if($('#pv')) $('#pv'].onclick = () => goQ(S.idx-1);
-    if($('#nx')) $('#nx'].onclick = () => goQ(S.idx+1);
-    if($('#sb')) $('#sb'].onclick = () => { if(confirm('هل أنت متأكد من تسليم إجاباتك نهائياً؟')) submit(); };
+    if($('#ta')) $('#ta').oninput = e => { S.ans[q.id]=e.target.value; saveLocalAttempt(ex.id, att.id, {answers:S.ans, status:'active'}); };
+    if($('#pv')) $('#pv').onclick = () => goQ(S.idx-1);
+    if($('#nx')) $('#nx').onclick = () => goQ(S.idx+1);
+    if($('#sb')) $('#sb').onclick = () => { if(confirm('هل أنت متأكد من تسليم إجاباتك نهائياً؟')) submit(); };
     renderMath();
   };
 
@@ -1228,7 +1227,7 @@ function end(st, sc, tot){
     ${explainsHtml ? `<div style="margin-top:16px"><h3>📚 ملخص الشرح والتغذية الراجعة</h3>${explainsHtml}</div>` : ''}
     <button class="btn pri" style="margin-top:20px" onclick="home()">العودة للرئيسية</button>
   </div>`, 'home');
-  if($('#certBtn')) $('#certBtn'].onclick = () => downloadCertificate(S.att.name, S.att.sid, S.ex.title, sc, tot, gi);
+  if($('#certBtn')) $('#certBtn').onclick = () => downloadCertificate(S.att.name, S.att.sid, S.ex.title, sc, tot, gi);
 }
 
 async function violation(reason){
