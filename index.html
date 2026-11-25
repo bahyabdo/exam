@@ -112,7 +112,19 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:11px 10px
 .footer-bar{text-align:center;padding:14px;margin-top:22px;font-size:13px;color:var(--mut);font-weight:700}
 .wl-box{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.35);border-radius:14px;padding:14px;margin-top:12px}
 .step-num{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--b));color:#fff;font-weight:900;display:inline-flex;align-items:center;justify-content:center;margin-bottom:8px}
-body.exam,body.exam *{-webkit-user-select:none;user-select:none}body.exam input,body.exam textarea{-webkit-user-select:text;user-select:text}
+body.exam,body.exam *{
+  -webkit-user-select:none!important;
+  -moz-user-select:none!important;
+  -ms-user-select:none!important;
+  user-select:none!important;
+  -webkit-touch-callout:none!important;
+  -webkit-user-drag:none!important;
+}
+body.exam input,body.exam textarea{
+  -webkit-user-select:text!important;
+  user-select:text!important;
+  -webkit-touch-callout:default!important;
+}
 #wm{position:fixed;inset:0;pointer-events:none;z-index:40}
 @media print{body{display:none!important}}
 </style>
@@ -1542,7 +1554,14 @@ function arm(){
   document.addEventListener('fullscreenchange',()=>{
     if(S.fsOk&&!document.fullscreenElement){blurOn();V('الخروج من وضع ملء الشاشة')}
   });
-  ['contextmenu','copy','cut','paste','dragstart','selectstart'].forEach(ev=>document.addEventListener(ev,e=>{if(S&&!S.done)e.preventDefault()}));
+['contextmenu','copy','cut','paste','dragstart','selectstart'].forEach(ev=>document.addEventListener(ev,e=>{
+  if(S&&!S.done){ e.preventDefault(); try{window.getSelection()?.removeAllRanges();}catch{} }
+}));
+document.addEventListener('selectionchange',()=>{
+  if(S&&!S.done&&document.activeElement?.tagName!=='TEXTAREA'&&document.activeElement?.tagName!=='INPUT'){
+    try{window.getSelection()?.removeAllRanges();}catch{}
+  }
+});
   document.addEventListener('keyup',e=>{
     if(e.key==='PrintScreen'||e.keyCode===44){blurOn();try{navigator.clipboard.writeText('')}catch{}V('محاولة تصوير الشاشة')}
   });
