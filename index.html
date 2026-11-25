@@ -1211,17 +1211,29 @@ async function rootInspectTeacher(tid){
 }
 
 /* ============== بوابة الطالب والحماية + خريطة الأسئلة + المؤقت الدائري + الشهادة ============== */
+function isSplitScreen(){
+  const sw = Math.min(screen.width, screen.height);
+  const sh = Math.max(screen.width, screen.height);
+  const ww = Math.min(window.innerWidth, window.innerHeight);
+  const wh = Math.max(window.innerWidth, window.innerHeight);
+  // إذا قل عرض أو ارتفاع المتصفح عن 72% من أبعاد الشاشة الفعلية فالشاشة مقسومة أو نافذة عائمة
+  return (ww < sw * 0.72) || (wh < sh * 0.72);
+}
+
 function sJoin(pc=''){
   clearLoops();
   show(`<div style="max-width:450px;margin:2vh auto"><div class="card">
     <h2 class="center" style="margin-top:4px">🎓 دخول الاختبار — Itqan</h2>
-    <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:12px;padding:12px;margin:12px 0;font-size:13px;color:#92400e;font-weight:700">⚠️ تنبيه: يمنع تبديل التبويبات أو تصوير الشاشة أو سحب شريط الإشعارات أثناء الاختبار، وسيتم قفل المحاولة فوراً عند المخالفة.</div>
+    <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:12px;padding:12px;margin:12px 0;font-size:13px;color:#92400e;font-weight:700">⚠️ تنبيه هام: يجب إغلاق وضع تقسيم الشاشة والنوافذ العائمة تماماً قبل البدء. يمنع تبديل التبويبات أو تصوير الشاشة أو استدعاء المساعد الذكي، وسيتم قفل المحاولة فوراً.</div>
     <label>كود الدخول (6 أرقام)</label><input id="cd" dir="ltr" maxlength="6" style="font-size:24px;text-align:center;letter-spacing:.2em;font-weight:800" value="${esc(pc)}">
     <label>اسم الطالب الثلاثي</label><input id="nm" placeholder="اكتب اسمك الكامل">
     <label>الرقم الجامعي / رقم الجلوس</label><input id="si" dir="ltr" placeholder="2026001">
-    <button class="btn pri" id="st" style="width:100%;margin-top:16px;padding:13px">🚀 الاختبار الآن</button></div></div>`, 'student');
+    <button class="btn pri" id="st" style="width:100%;margin-top:16px;padding:13px">🚀 بدء الاختبار الآن</button></div></div>`, 'student');
   $('#st').onclick=async()=>{
     try{
+      if(isSplitScreen()){
+        return toast('🚫 ممنوع الدخول والشاشة مقسومة أو في نافذة عائمة! أغلق تقسيم الشاشة واجعل المتصفح بملء الشاشة أولاً.');
+      }
       const code=$('#cd').value.trim(), name=$('#nm').value.trim(), sid=$('#si').value.trim();
       if(!code||!name||!sid) return toast('أكمل جميع البيانات أولاً');
       const all = await fb('exams') || {};
@@ -1260,12 +1272,16 @@ function sJoin(pc=''){
 
 function startExam(ex, att){
   clearLoops();
+  if(isSplitScreen()){
+    toast('🚫 تم رفض الدخول: أغلق وضع تقسيم الشاشة أولاً!');
+    return sJoin(ex.code||'');
+  }
   const qMap = Object.fromEntries(ex.questions.map(q=>[q.id,q]));
   S = {ex, att, idx:0, ans:{...(att.answers||{})}, done:false, locked:false, fsOk:false, qLeft: ex.qTimer||0};
   document.documentElement.requestFullscreen?.().then(()=>S.fsOk=true).catch(()=>{});
   arm();
   const wm=document.createElement('div');wm.id='wm';
-  wm.style.backgroundImage=`url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='320' height='190'><text x='15' y='95' fill='rgba(15,23,42,0.06)' font-family='sans-serif' font-size='15' transform='rotate(-24 150 95)'>Itqan | ${att.name} - ${att.sid}</text></svg>`)}")`;
+  wm.style.backgroundImage=`url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='300' height='170'><text x='10' y='85' fill='rgba(15,23,42,0.08)' font-family='sans-serif' font-weight='bold' font-size='15' transform='rotate(-24 150 95)'>Itqan | ${att.name} - ${att.sid}</text></svg>`)}")`;
   document.body.appendChild(wm);
 
   const goQ = (newIdx) => {
@@ -1320,6 +1336,11 @@ function startExam(ex, att){
   const endAt = att.startedAt + totalSec * 1000;
 
   const tick = () => {
+    if(S && !S.done && !S.locked && Date.now() > S.armAt && isSplitScreen()){
+      app.style.filter='blur(25px)';
+      violation('محاولة استخدام تقسيم الشاشة أو نافذة عائمة أثناء الاختبار');
+      return;
+    }
     const left = Math.max(0, Math.floor((endAt - Date.now()) / 1000));
     const el = $('#tm'), ring = $('#tmRing');
     if(el && ring){
@@ -1391,7 +1412,7 @@ function end(st, sc, tot){
   show(`<div class="card center" style="max-width:500px;margin:4vh auto;padding:30px">
     <div class="big">${st==='submitted'?'🎉':'🚫'}</div>
     <h2>${st==='submitted'?'تم تسليم الاختبار بنجاح':'تم قفل الاختبار بسبب مخالفة'}</h2>
-    <p class="mut" style="margin:10px 0">${st==='submitted'?'تم حفظ إجاباتك في سجل المعلم بنجاح.':'تم رصد محاولة خروج أو تصوير للشاشة وإبلاغ المعلم فوراً.'}</p>
+    <p class="mut" style="margin:10px 0">${st==='submitted'?'تم حفظ إجاباتك في سجل المعلم بنجاح.':'تم رصد محاولة خروج أو تقسيم للشاشة أو استدعاء تطبيق خارجي وإبلاغ المعلم فوراً.'}</p>
     ${st==='submitted'&&S.ex.showScore?`<div class="card-soft" style="margin-top:16px">
       <h3>درجتك: ${sc} من ${tot} (${gi.pct}%)</h3>
       <span class="badge ${gi.cls}" style="font-size:15px;margin-top:6px">التقدير: ${gi.grade} — ${gi.status}</span>
@@ -1405,7 +1426,9 @@ function end(st, sc, tot){
 async function violation(reason){
   if(!S||S.done||S.locked||Date.now()<S.armAt)return;
   S.locked=true;
-  const u = `${FIREBASE_URL}/attempts/${S.ex.id}/${S.att.id}.json`;
+  let token = '';
+  try{ if(auth.currentUser) token = await auth.currentUser.getIdToken(); }catch{}
+  const u = `${FIREBASE_URL}/attempts/${S.ex.id}/${S.att.id}.json${token ? `?auth=${token}` : ''}`;
   const payload = JSON.stringify({status:'locked', finishedAt:Date.now(), lastViolation:reason});
   try{ fetch(u, {method:'PATCH', body:payload, keepalive:true, headers:{'Content-Type':'application/json'}}); }catch{}
   fb(`attempts/${S.ex.id}/${S.att.id}/violations`, 'POST', {t:Date.now(), r:reason}).catch(()=>{});
@@ -1414,29 +1437,36 @@ async function violation(reason){
 
 function arm(){
   const V=r=>violation(r);
-  const blurOn=()=>{if(S&&!S.done)app.style.filter='blur(18px)'};
+  const blurOn=()=>{if(S&&!S.done)app.style.filter='blur(25px)'};
   const blurOff=()=>{if(S&&!S.done&&!S.locked)app.style.filter='none'};
-  S.armAt=Date.now()+2500;
+  S.armAt=Date.now()+2000;
   let initW=window.innerWidth,initH=window.innerHeight,blurT=null;
 
   document.addEventListener('visibilitychange',()=>{
-    if(document.hidden){blurOn();V('ترك الصفحة / تبديل التبويب')}
+    if(document.hidden){blurOn();V('ترك الصفحة / تبديل التبويب أو التطبيق')}
   });
   window.addEventListener('blur',()=>{
     if(!S||S.done||S.locked||Date.now()<S.armAt)return;
     blurOn();
     clearTimeout(blurT);
     blurT=setTimeout(()=>{
-      if(document.hidden||!document.hasFocus()) V('فقدان التركيز / فتح نافذة خارجية');
+      if(document.hidden||!document.hasFocus()) V('فقدان التركيز / فتح مساعد ذكي أو نافذة خارجية');
       else blurOff();
-    },1500);
+    },600);
   });
   window.addEventListener('focus',()=>{clearTimeout(blurT);blurOff()});
   window.addEventListener('resize',()=>{
-    if(S&&!S.done&&Date.now()>S.armAt&&(Math.abs(window.innerWidth-initW)>140||Math.abs(window.innerHeight-initH)>180)){
+    if(S&&!S.done&&Date.now()>S.armAt&&(isSplitScreen()||Math.abs(window.innerWidth-initW)>100||Math.abs(window.innerHeight-initH)>120)){
       blurOn();V('محاولة تقسيم الشاشة أو تغيير حجم النافذة');
     }
   });
+  // رصد إيماءة 3 أصابع لتصوير الشاشة على الهواتف
+  document.addEventListener('touchstart',e=>{
+    if(S&&!S.done&&e.touches&&e.touches.length>=3){
+      blurOn();
+      V('محاولة تصوير الشاشة بإيماءة اللمس');
+    }
+  },{passive:true});
   window.addEventListener('pagehide',()=>V('إغلاق أو تحديث الصفحة'));
   window.addEventListener('beforeunload',e=>{if(S&&!S.done){e.preventDefault();e.returnValue=''}});
   document.addEventListener('fullscreenchange',()=>{
