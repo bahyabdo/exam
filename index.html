@@ -221,8 +221,9 @@ function show(html, mode='home'){
   if(mode === 'student'){
     nav.innerHTML = `<span class="badge b-info">وضع الاختبار الآمن</span>`;
   } else if(user){
+    const isRootUser = realIsRoot();
     nav.innerHTML = `
-      ${realIsRoot() ? `<button class="btn warn sm" onclick="rootPanel()">👑 إدارة الروت</button>` : ''}
+      ${isRootUser ? `<button class="btn warn sm" onclick="rootPanel()">👑 لوحة المطور / الروت</button>` : ''}
       <button class="btn sm" onclick="dash()">لوحة المعلم</button>
       <button class="btn bad sm" onclick="logout()">خروج</button>`;
   } else {
@@ -260,7 +261,7 @@ function home(){
   <div class="card center mut" style="font-size:13px">تطوير وتصميم: <b>الباهي عبدالرحمن</b> — منصة إتقان للتقييم الرقمي الآمن</div>`, 'home');
 }
 
-/* ================= نافذة تسجيل دخول مرنة ================= */
+/* ================= نافذة تسجيل دخول مرنة مع استعادة كلمة المرور ================= */
 function teacherLoginPrompt(){
   show(`<div style="max-width:440px;margin:4vh auto"><div class="card center" style="padding:30px">
     <h2>👨‍🏫 بوابة المعلمين والإدارة</h2>
@@ -269,7 +270,8 @@ function teacherLoginPrompt(){
     <div style="margin:16px 0;border-top:1px dashed var(--bd);padding-top:16px">
       <label style="text-align:right">البريد الإلكتروني</label><input id="lgEmail" type="email" placeholder="name@example.com" dir="ltr">
       <label style="text-align:right;margin-top:10px">كلمة المرور</label><input id="lgPass" type="password" placeholder="••••••••" dir="ltr">
-      <button class="btn ok" style="width:100%;margin-top:14px;padding:12px" onclick="teacherEmailLogin()">🔐 دخول بالبريد وكلمة المرور</button>
+      <div style="text-align:left;margin-top:4px"><a href="#" onclick="forgotPassword();return false;" style="font-size:12.5px;color:var(--pri);text-decoration:none;font-weight:700">هل نسيت كلمة المرور؟</a></div>
+      <button class="btn ok" style="width:100%;margin-top:12px;padding:12px" onclick="teacherEmailLogin()">🔐 دخول بالبريد وكلمة المرور</button>
     </div>
     <button class="btn sm" style="margin-top:10px" onclick="home()">العودة للرئيسية</button>
   </div></div>`, 'home');
@@ -293,6 +295,17 @@ async function teacherEmailLogin(){
     user = res.user;
     await processTeacherLogin(user);
   }catch(e){ toast('خطأ في البيانات أو الحساب غير موجود: ' + e.message); }
+}
+
+async function forgotPassword(){
+  const email = $('#lgEmail')?.value.trim();
+  if(!email) return toast('أدخل بريدك الإلكتروني في الحقل أعلاه أولاً لتلقي رابط الاستعادة');
+  try{
+    await auth.sendPasswordResetEmail(email);
+    toast('✅ تم إرسال بريد استعادة كلمة المرور إلى بريدك الإلكتروني بنجاح!');
+  }catch(e){
+    toast('❌ تعذر إرسال بريد الاستعادة: ' + e.message);
+  }
 }
 
 async function processTeacherLogin(u){
@@ -716,7 +729,7 @@ async function live(eid){
   loops.push(setInterval(renderLive, 4000));
 }
 
-/* ================= النتائج والتحليل وتصدير Excel ================= */
+/* ================= النتائج والتحليل وتعديل الدرجات وتصدير Excel ================= */
 async function results(eid){
   if(!user) return teacherLoginPrompt();
   const [ex, attsObj] = await Promise.all([fb(`exams/${eid}`), fb(`attempts/${eid}`)]);
@@ -744,10 +757,10 @@ async function results(eid){
     </div>
   </div>
   <div class="card">
-    <h3>📋 كشف درجات الطلاب</h3>
+    <h3>📋 كشف درجات الطلاب (مع إمكانية تعديل الدرجة يدوياً)</h3>
     <div class="table-wrap">
       <table>
-        <tr><th>الترتيب</th><th>اسم الطالب</th><th>الرقم</th><th>الدرجة</th><th>التقدير</th><th>زمن الحل</th><th>الحالة / المخالفات</th><th>ورقة الإجابة</th></tr>
+        <tr><th>الترتيب</th><th>اسم الطالب</th><th>الرقم</th><th>الدرجة</th><th>التقدير</th><th>زمن الحل</th><th>الحالة / المخالفات</th><th>إدارة المعلم</th></tr>
         ${atts.map((a, i) => {
           const gi = getGradeInfo(a.score||0, a.total||1);
           const qCount = (a.order || ex.questions || []).length;
@@ -762,7 +775,10 @@ async function results(eid){
             <td><span class="badge ${gi.cls}">${gi.grade}</span></td>
             <td>${isAnomaly ? `<span class="badge b-bad" title="حل سريع جداً مقارنة بعدد الأسئلة">⚡ ${durStr}</span>` : durStr}</td>
             <td>${a.status==='submitted'?'<span class="badge b-ok">مكتمل</span>':`<span class="badge b-bad">مقفل: ${esc(a.lastViolation||'مخالفة')}</span>`}</td>
-            <td><button class="btn sm" onclick="printStudentPaper('${eid}','${a.id}')">🖨️ ورقة الطالب</button></td>
+            <td class="row">
+              <button class="btn sm" onclick="printStudentPaper('${eid}','${a.id}')">🖨️ ورقة الطالب</button>
+              <button class="btn pri sm" onclick="editStudentScore('${eid}','${a.id}', ${a.score||0}, ${a.total})">✏️ تعديل الدرجة</button>
+            </td>
           </tr>`;
         }).join('')}
       </table>
@@ -798,6 +814,16 @@ async function results(eid){
   };
 }
 
+async function editStudentScore(eid, aid, curScore, total){
+  const newScr = prompt(`أدخل الدرجة الجديدة للطالب (الدرجة الكلية: ${total}):`, curScore);
+  if(newScr === null) return;
+  const parsed = parseFloat(newScr);
+  if(isNaN(parsed) || parsed < 0 || parsed > total) return toast('⚠️ أدخل درجة صحيحة ضمن النطاق المسموح.');
+  await fb(`attempts/${eid}/${aid}`, 'PATCH', {score: parsed});
+  toast('✅ تم تحديث درجة الطالب بنجاح!');
+  results(eid);
+}
+
 async function printStudentPaper(eid, aid){
   const [ex, att] = await Promise.all([fb(`exams/${eid}`), fb(`attempts/${eid}/${aid}`)]);
   const qMap = Object.fromEntries((ex.questions||[]).map(q => [q.id, q]));
@@ -824,7 +850,7 @@ async function printStudentPaper(eid, aid){
   w.document.close();
 }
 
-/* ================= لوحة تحكم الروت (ROOT) ================= */
+/* ================= لوحة تحكم الروت (ROOT) والمطور ================= */
 async function rootPanel(onlyInactive=false){
   if(!realIsRoot()){ toast('⛔ صلاحية مرفوضة'); return home(); }
   impTeacher = null; clearLoops();
@@ -857,7 +883,7 @@ async function rootPanel(onlyInactive=false){
 
   show(`<div class="card" style="background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;border:none">
     <div class="row between">
-      <div><span class="badge" style="background:#fbbf24;color:#0f172a">ROOT</span><h1 style="color:#fff;margin-top:6px">👑 لوحة التحكم الشاملة — منصة Itqan</h1></div>
+      <div><span class="badge" style="background:#fbbf24;color:#0f172a">ROOT / مطور المنصة</span><h1 style="color:#fff;margin-top:6px">👑 لوحة التحكم الشاملة — منصة Itqan</h1></div>
       <div class="row">
         <button class="btn ok sm" id="fullBkBtn">💾 نسخة احتياطية كاملة</button>
         <button class="btn sm" onclick="dash()">العودة للوحة المعلم</button>
@@ -908,7 +934,7 @@ async function rootPanel(onlyInactive=false){
   </div>`, 'root');
 
   $('#mntBtn').onclick = async () => { await fb('sysConfig', 'PATCH', {maintenance: !sysCfg.maintenance}); rootPanel(onlyInactive); };
-  $('#annSave').onclick = async () => { await fb('sysConfig', 'PATCH', {announcement: $('#annInp').value.trim()}); toast('تم حفظ الإعلان'); rootPanel(onlyInactive); };
+  $('#annSave').onclick = async () => { await fb('sysConfig', 'PATCH', {announcement: $('#annInp'].value.trim()}); toast('تم حفظ الإعلان'); rootPanel(onlyInactive); };
   $('#fullBkBtn').onclick = async () => {
     const fullData = await fb('');
     const a = document.createElement('a');
@@ -1082,7 +1108,7 @@ function startExam(ex, att){
 
     app.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{ S.ans[q.id]=+b.dataset.o; sync(); render(); });
     app.querySelectorAll('[data-jump]').forEach(b=>b.onclick=()=>goQ(+b.dataset.jump));
-    if($('#ta')) $('#ta').oninput = e => { S.ans[q.id]=e.target.value; saveLocalAttempt(ex.id, att.id, {answers:S.ans, status:'active'}); };
+    if($('#ta')) $('#ta'].oninput = e => { S.ans[q.id]=e.target.value; saveLocalAttempt(ex.id, att.id, {answers:S.ans, status:'active'}); };
     if($('#pv')) $('#pv').onclick = () => goQ(S.idx-1);
     if($('#nx')) $('#nx').onclick = () => goQ(S.idx+1);
     if($('#sb')) $('#sb').onclick = () => { if(confirm('هل أنت متأكد من تسليم إجاباتك نهائياً؟')) submit(); };
