@@ -1570,19 +1570,45 @@ function startExam(ex, att, camStream=null, audioStream=null){
             } else {
               coverStrikes = 0;
             }
-            const preds = await model.detect(vid);
+           const preds = await model.detect(vid);
+            const vw = vid.videoWidth || 320;
+            const vh = vid.videoHeight || 240;
             let phoneFound = false, personFound = false;
+
             preds.forEach(p => {
-              if(p.class === 'cell phone' && p.score > 0.58) phoneFound = true;
-              if(p.class === 'person' && p.score > 0.45) personFound = true;
+              if(p.class === 'person' && p.score > 0.35) personFound = true;
+              if(p.class === 'cell phone' && p.score > 0.85){
+                const [bx, by, bw, bh] = p.bbox;
+                const areaRatio = (bw * bh) / (vw * vh);
+                const bottomEdge = (by + bh) / vh;
+                // تجاهل أطراف الأصابع أسفل الشاشة أو الأجسام الصغيرة العابرة
+                if(areaRatio > 0.04 && bottomEdge < 0.92){
+                  phoneFound = true;
+                }
+              }
             });
-            if(phoneFound) return violation('رصد هاتف محمول إضافي عبر الكاميرا أثناء الاختبار');
+
+            if(phoneFound){
+              S.phoneHits = (S.phoneHits || 0) + 1;
+              if(S.phoneHits === 2){
+                toast('⚠️ تنبيه أمني: تم رصد جسم يشبه هاتفاً إضافياً أمام الكاميرا، أبعد أي هاتف آخر!');
+              }
+              if(S.phoneHits >= 4){
+                return violation('رصد هاتف محمول إضافي عبر الكاميرا أثناء الاختبار');
+              }
+            } else {
+              S.phoneHits = 0;
+            }
+
             if(!personFound){
-              S.noFaceCount++;
-              if(S.noFaceCount === 2) toast('⚠️ تنبيه: يرجى إبقاء وجهك واضحاً أمام الكاميرا!');
-              if(S.noFaceCount >= 4) return violation('ابتعاد الطالب عن الكاميرا لفترة طويلة');
-            } else { S.noFaceCount = 0; }
-          }, 1600));
+              S.noFaceCount = (S.noFaceCount || 0) + 1;
+              if(S.noFaceCount === 4){
+                toast('⚠️ تنبيه: يرجى إبقاء وجهك في نطاق الكاميرا الأمامية');
+              }
+            } else {
+              S.noFaceCount = 0;
+            }
+          }, 2000));
         }
       }catch{}
     })();
