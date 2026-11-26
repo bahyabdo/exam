@@ -1542,16 +1542,34 @@ function startExam(ex, att, camStream=null, audioStream=null){
       try{
         if(typeof cocoSsd !== 'undefined'){
           const model = await cocoSsd.load();
+     let coverStrikes = 0;
           const checkCover = (v) => {
             const c = document.createElement('canvas'); c.width=64; c.height=48;
             const ctx = c.getContext('2d'); ctx.drawImage(v,0,0,64,48);
             const d = ctx.getImageData(0,0,64,48).data;
-            let sum = 0; for(let i=0;i<d.length;i+=4) sum += (d[i]+d[i+1]+d[i+2])/3;
-            return (sum/(64*48)) < 12;
+            let sum = 0, sqSum = 0, n = 64 * 48;
+            for(let i=0;i<d.length;i+=4){
+              const lum = (d[i]+d[i+1]+d[i+2])/3;
+              sum += lum;
+              sqSum += lum * lum;
+            }
+            const mean = sum / n;
+            if(mean === 0) return false;
+            const variance = (sqSum / n) - (mean * mean);
+            return (mean < 12 && variance < 15);
           };
           loops.push(setInterval(async()=>{
             if(!S||S.done||S.locked||Date.now()<S.armAt||vid.readyState!==4) return;
-            if(checkCover(vid)) return violation('تغطية عدسة الكاميرا أثناء الاختبار');
+            if(checkCover(vid)){
+              coverStrikes++;
+              if(coverStrikes === 1 || coverStrikes === 2){
+                toast(`⚠️ تنبيه (${coverStrikes}/3): عدسة الكاميرا مظلمة أو مغطاة، يرجى كشفها وتحسين الإضاءة!`);
+                return;
+              }
+              if(coverStrikes >= 3) return violation('تغطية عدسة الكاميرا أثناء الاختبار');
+            } else {
+              coverStrikes = 0;
+            }
             const preds = await model.detect(vid);
             let phoneFound = false, personFound = false;
             preds.forEach(p => {
