@@ -1630,7 +1630,7 @@ function startExam(ex, att, camStream=null, audioStream=null){
   if(ex.antiAudio && audioStream){
     try{
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if(audioCtx.state === 'suspended') await audioCtx.resume().catch(()=>{});
+      if(audioCtx.state === 'suspended')  audioCtx.resume().catch(()=>{});
       const analyser = audioCtx.createAnalyser();
       const mic = audioCtx.createMediaStreamSource(audioStream);
       mic.connect(analyser);
