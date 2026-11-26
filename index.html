@@ -1699,6 +1699,7 @@ function startExam(ex, att, camStream=null, audioStream=null){
       let warned = false;
       let cooldownUntil = 0;
       let voiceBase = null;
+      const MIC_DEBUG = !!window.DEBUG_MIC || /[?&]debugmic=1/.test(location.search);
       const voiceCalib = [];
 
       loops.push(setInterval(()=>{
@@ -1737,10 +1738,24 @@ function startExam(ex, att, camStream=null, audioStream=null){
         }
 
         // الكلام = ارتفاع واضح (≈ 8 ديسيبل) فوق هدوء القاعة في نطاق الصوت + مستوى صوت فعلي غير ضئيل
-        const speechLike = (voiceLevel - voiceBase) >= 30 && rms >= 1.2;
+        const speechLike = (voiceLevel - voiceBase) >= 18 && rms >= 0.35;
         // تكيّف بطيء مع ضوضاء القاعة (مروحة/تكييف) عندما لا يوجد كلام، حتى لا تحدث إنذارات كاذبة
         if(!speechLike && (voiceLevel - voiceBase) < 15) voiceBase = voiceBase * 0.98 + voiceLevel * 0.02;
-        if(window.DEBUG_MIC) console.log('MIC', {voiceLevel:Math.round(voiceLevel), voiceBase:Math.round(voiceBase), rms:+rms.toFixed(2), speechLike, talkTicks, ctx:audioCtx.state});
+        if(MIC_DEBUG){
+          let dbg = document.getElementById('micDbg');
+          if(!dbg){
+            dbg = document.createElement('div'); dbg.id = 'micDbg';
+            dbg.style.cssText = 'position:fixed;top:8px;left:8px;z-index:99999;background:#000c;color:#0f0;font:12px/1.5 monospace;padding:8px 10px;border-radius:8px;direction:ltr;white-space:pre';
+            document.body.appendChild(dbg);
+          }
+          const tr = audioStream.getAudioTracks()[0];
+          dbg.textContent = 'MIC DEBUG\n' +
+            'ctx: ' + audioCtx.state + '\n' +
+            'track: ' + (tr ? tr.readyState + (tr.muted ? ' (MUTED)' : '') + (tr.enabled ? '' : ' (DISABLED)') : 'NONE') + '\n' +
+            'rms: ' + rms.toFixed(2) + '\n' +
+            'voiceLevel: ' + Math.round(voiceLevel) + '  base: ' + Math.round(voiceBase) + '  delta: ' + Math.round(voiceLevel - voiceBase) + '\n' +
+            'speechLike: ' + speechLike + '  ticks: ' + talkTicks + '  warnings: ' + (S.audioWarnings || 0);
+        }
 
         if(Date.now() < cooldownUntil){ talkTicks = 0; return; }
         if(speechLike){
