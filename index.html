@@ -176,6 +176,8 @@ const rid = (n=6) => Array.from(crypto.getRandomValues(new Uint8Array(n)), b => 
 const shuffle = a => { a=[...a]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]} return a; };
 const fmtTime = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
 const normSid = s => String(s||'').trim().replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).toLowerCase();
+const attKey = sid => 's' + Array.from(normSid(sid).slice(0,50)).map(c => /[a-z0-9_-]/.test(c) ? c : '~' + c.codePointAt(0).toString(16) + '~').join('');
+const qEq = (field, val) => `orderBy=${encodeURIComponent(JSON.stringify(field))}&equalTo=${encodeURIComponent(JSON.stringify(val))}`;
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),4500)}
 let teacher = JSON.parse(localStorage.getItem('itqan_teacher')||'null');
 let impTeacher = null;
@@ -267,7 +269,11 @@ const authReady = new Promise(res => { const un = auth.onAuthStateChanged(() => 
 async function fb(path, method='GET', body=null){
   let token = '';
   try{ await authReady; if(auth.currentUser) token = await auth.currentUser.getIdToken(); }catch{}
-  const url = `${FIREBASE_URL}/${path}.json${token ? `?auth=${token}` : ''}`;
+  const qi = path.indexOf('?');
+  const base = qi < 0 ? path : path.slice(0, qi);
+  const params = qi < 0 ? [] : [path.slice(qi + 1)];
+  if(token) params.push(`auth=${token}`);
+  const url = `${FIREBASE_URL}/${base}.json${params.length ? '?' + params.join('&') : ''}`;
   const opt = {method, headers:{'Content-Type':'application/json'}};
   if(body !== null) opt.body = JSON.stringify(body);
   const r = await fetch(url, opt);
@@ -675,7 +681,7 @@ async function dash(){
     await auth.signOut().catch(()=>{}); saveT(null);
     return show('<div class="card center" style="padding:40px"><div class="big">🚫</div><h2>تم إيقاف هذا الحساب من قِبل إدارة المنصة</h2></div>', 'home');
   }
-  const all = await fb('exams') || {};
+  const all = await fb(`exams?${qEq('owner', curT.id)}`) || {};
   const myExams = Object.values(all).filter(x => x && x.owner === curT.id);
   const now = Date.now();
   let autoDeletedCount = 0;
@@ -1455,7 +1461,7 @@ function sJoin(pc=''){
     try{
       const code=$('#cd').value.trim(), name=$('#nm').value.trim(), sid=$('#si').value.trim();
       if(!code||!name||!sid) return toast('أكمل جميع البيانات أولاً');
-      const all = await fb('exams') || {};
+      const all = await fb(`exams?${qEq('code', code)}`) || {};
       const ex = Object.values(all).find(x => x && x.open && String(x.code) === code);
       if(!ex) return toast('كود الدخول غير صحيح أو انتهت صلاحيته');
       if(ex.restrictStudents && Array.isArray(ex.allowedList) && ex.allowedList.length > 0){
@@ -1498,8 +1504,7 @@ function sJoin(pc=''){
           return toast('🎙️ يتطلب هذا الاختبار تفعيل الميكروفون لرصد الصوت المحيط. يرجى السماح بالوصول للميكروفون.');
         }
       }
-      const atts = Object.values(await fb(`attempts/${ex.id}`) || {});
-      let att = atts.find(a => a && normSid(a.sid) === normSid(sid));
+      let att = await fb(`attempts/${ex.id}/${attKey(sid)}`);
       if(att && att.status === 'submitted'){ stopProctoringMedia(); return toast('لقد قمت بتسليم هذا الاختبار مسبقاً'); }
       if(att && att.status === 'locked'){ stopProctoringMedia(); return toast('تم قفل اختبارك بسبب مخالفة، راجع المعلم'); }
       const sessionToken = rid(10);
@@ -1507,7 +1512,7 @@ function sJoin(pc=''){
         const qs = ex.shuffleQ ? shuffle(ex.questions) : ex.questions;
         const order = qs.map(q=>({id:q.id, opts:(q.type==='mcq'||q.type==='multi')?(ex.shuffleO?shuffle(q.options.map((_,i)=>i)):q.options.map((_,i)=>i)):null}));
         const total = ex.questions.reduce((s,q)=>s+(+q.points||1),0);
-        const aid = rid(8);
+        const aid = attKey(sid);
         att = {id:aid, examId:ex.id, name, sid, status:'active', startedAt:Date.now(), answers:{}, total, order, sessionToken};
         await fb(`attempts/${ex.id}/${aid}`, 'PUT', att);
       } else {
