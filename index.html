@@ -11,6 +11,8 @@
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
 <style>
 :root{
   --bg1:#eef6ff;--bg2:#f8fafc;--card:#ffffff;--card2:#f1f5f9;--nav:rgba(255,255,255,.88);
@@ -111,6 +113,8 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:11px 10px
 .creator-photo{width:150px;height:150px;border-radius:50%;object-fit:cover;object-position:center 15%;display:block;border:3px solid #fff}
 .footer-bar{text-align:center;padding:14px;margin-top:22px;font-size:13px;color:var(--mut);font-weight:700}
 .wl-box{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.35);border-radius:14px;padding:14px;margin-top:12px}
+.geo-box{background:rgba(14,165,233,.08);border:1px solid rgba(14,165,233,.35);border-radius:14px;padding:14px;margin-top:12px}
+.sec-box{background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.35);border-radius:14px;padding:14px;margin-top:12px}
 .step-num{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--b));color:#fff;font-weight:900;display:inline-flex;align-items:center;justify-content:center;margin-bottom:8px}
 .guide-list{list-style:none;padding:0;margin-top:8px}
 .guide-list li{padding:7px 0;border-bottom:1px dashed var(--bd);font-size:14px;line-height:1.7}
@@ -128,7 +132,10 @@ body.exam input,body.exam textarea{
   user-select:text!important;
   -webkit-touch-callout:default!important;
 }
-#wm{position:fixed;inset:0;pointer-events:none;z-index:40}
+#wm{position:fixed;inset:0;pointer-events:none;z-index:40;animation:wmMove 18s linear infinite}
+@keyframes wmMove{0%{background-position:0 0}50%{background-position:120px 80px}100%{background-position:0 0}}
+#proctorCamBox{position:fixed;bottom:14px;left:14px;z-index:45;background:var(--card);border:2px solid #0ea5e9;border-radius:12px;padding:4px;box-shadow:0 8px 20px rgba(0,0,0,.2);text-align:center}
+#proctorCam{width:110px;height:82px;border-radius:8px;object-fit:cover;display:block;transform:scaleX(-1)}
 @media print{body{display:none!important}}
 </style>
 </head>
@@ -147,24 +154,20 @@ const firebaseConfig = {
 const FIREBASE_URL = firebaseConfig.databaseURL;
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
-
 const ROOT_EMAIL = "bahyabdo25@gmail.com";
 const FIVE_MONTHS_MS = 150 * 24 * 60 * 60 * 1000;
-
 if(localStorage.getItem('itqan_dark')==='1') document.body.classList.add('dark');
 function toggleDark(){
   document.body.classList.toggle('dark');
   localStorage.setItem('itqan_dark', document.body.classList.contains('dark')?'1':'0');
   const b = $('#dkBtn'); if(b) b.textContent = document.body.classList.contains('dark')?'☀️':'🌙';
 }
-
 const LOGO_SVG = `<svg width="44" height="44" viewBox="0 0 48 48" fill="none">
   <defs><linearGradient id="itqG" x1="0" y1="0" x2="48" y2="48"><stop offset="0%" stop-color="#4f46e5"/><stop offset="50%" stop-color="#0ea5e9"/><stop offset="100%" stop-color="#10b981"/></linearGradient></defs>
   <rect width="48" height="48" rx="14" fill="url(#itqG)" fill-opacity="0.14" stroke="url(#itqG)" stroke-width="2"/>
   <path d="M24 9L37 14.5V24.5C37 32.8 31.4 39.6 24 41.5C16.6 39.6 11 32.8 11 24.5V14.5L24 9Z" fill="url(#itqG)" fill-opacity="0.18" stroke="url(#itqG)" stroke-width="2.5"/>
   <path d="M18.5 24.5L22.2 28.2L30 20.4" stroke="#4f46e5" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
-
 const app = document.getElementById('app');
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
@@ -172,16 +175,48 @@ const rid = (n=6) => Array.from(crypto.getRandomValues(new Uint8Array(n)), b => 
 const shuffle = a => { a=[...a]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]} return a; };
 const fmtTime = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
 const normSid = s => String(s||'').trim().replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).toLowerCase();
-
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),4500)}
-
 let teacher = JSON.parse(localStorage.getItem('itqan_teacher')||'null');
 let impTeacher = null;
 let sysCfg = {maintenance:false, announcement:''};
-
 const realIsRoot = () => teacher && String(teacher.email||'').toLowerCase() === ROOT_EMAIL;
 const isRoot = () => realIsRoot() && !impTeacher;
 const activeTeacher = () => impTeacher || teacher;
+
+/* ============== دوال تحديد الموقع الجغرافي (Haversine) + إيقاف وسائط المراقبة ============== */
+let activeMediaStreams = [];
+function stopProctoringMedia(){
+  activeMediaStreams.forEach(st => { try{ st.getTracks().forEach(t => t.stop()); }catch{} });
+  activeMediaStreams = [];
+  $('#proctorCamBox')?.remove();
+}
+function calcDistanceMeters(lat1, lon1, lat2, lon2){
+  const R = 6371e3;
+  const p1 = lat1 * Math.PI / 180, p2 = lat2 * Math.PI / 180;
+  const dp = (lat2 - lat1) * Math.PI / 180, dl = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dp/2)*Math.sin(dp/2) + Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)*Math.sin(dl/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+function checkStudentGeofence(geo){
+  return new Promise((resolve, reject) => {
+    if(!geo || !geo.enabled || !geo.lat || !geo.lng) return resolve({ok:true});
+    if(!navigator.geolocation) return reject('متصفحك لا يدعم خدمة تحديد الموقع الجغرافي (GPS).');
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const dist = calcDistanceMeters(geo.lat, geo.lng, pos.coords.latitude, pos.coords.longitude);
+        const gpsBuffer = Math.min(pos.coords.accuracy || 10, 20);
+        const allowedRadius = (Number(geo.baseRadius)||30) + (Number(geo.extraRadius)||0) + gpsBuffer;
+        if(dist <= allowedRadius) resolve({ok:true, dist:Math.round(dist)});
+        else reject(`⛔ أنت خارج نطاق قاعة الاختبار! المسافة الحالية: ${Math.round(dist)} متر (الحد المسموح للقاعة: ${Math.round((Number(geo.baseRadius)||30)+(Number(geo.extraRadius)||0))} متر).`);
+      },
+      () => reject('⚠️ يجب السماح بالوصول إلى الموقع الجغرافي (GPS) للدخول إلى قاعة الاختبار.'),
+      {enableHighAccuracy:true, timeout:10000, maximumAge:0}
+    );
+  });
+}
+function isSplitScreen(){
+  try{ return (window.screen && window.innerWidth < window.screen.availWidth * 0.72); }catch{ return false; }
+}
 
 function headerHtml(activeTab='home'){
   const isDk = document.body.classList.contains('dark');
@@ -204,8 +239,8 @@ function headerHtml(activeTab='home'){
   </div>${ann}${imp}`;
 }
 const footerHtml = `<div class="footer-bar">جميع الحقوق محفوظة © 2026 — منصة <b>Itqan | إتقان</b> للاختبارات الرقمية الآمنة</div>`;
-
 function show(h, activeTab='home'){
+  stopProctoringMedia();
   document.body.classList.remove('exam');
   $('#wm')?.remove();
   app.style.filter='none';
@@ -219,7 +254,6 @@ function show(h, activeTab='home'){
   }
   app.innerHTML = headerHtml(activeTab) + h + footerHtml;
 }
-
 function getGradeInfo(score, total){
   const pct = total > 0 ? Math.round((score / total) * 100) : 0;
   if(pct >= 90) return {pct, grade:'ممتاز', status:'ناجح', cls:'b-ok'};
@@ -228,7 +262,6 @@ function getGradeInfo(score, total){
   if(pct >= 50) return {pct, grade:'مقبول', status:'ناجح', cls:'b-warn'};
   return {pct, grade:'ضعيف', status:'راسب', cls:'b-bad'};
 }
-
 async function fb(path, method='GET', body=null){
   let token = '';
   try{ if(auth.currentUser) token = await auth.currentUser.getIdToken(); }catch{}
@@ -239,17 +272,14 @@ async function fb(path, method='GET', body=null){
   if(!r.ok) throw new Error('تعذر الاتصال بقاعدة البيانات أو صلاحية مرفوضة');
   return r.json();
 }
-
 let loops = [], S = null;
-const clearLoops = () => { loops.forEach(clearInterval); loops=[]; };
+const clearLoops = () => { loops.forEach(clearInterval); loops=[]; stopProctoringMedia(); };
 const saveT = t => { teacher = t; impTeacher = null; t ? localStorage.setItem('itqan_teacher', JSON.stringify(t)) : localStorage.removeItem('itqan_teacher'); };
-
 function exitImpersonate(goRoot=false){
   impTeacher = null;
   if(goRoot) rootPanel();
   else dash();
 }
-
 /* ============== الصفحة الرئيسية المطورة ============== */
 function home(){
   clearLoops();
@@ -270,27 +300,24 @@ function home(){
       </div>
     </div>
   </div>
-
   <div class="grid4" style="margin-bottom:16px">
-    <div class="stat-box"><div style="font-size:26px">🛡️</div><h3>حماية ضد الغش</h3><p class="mut" style="font-size:12.5px">أكواد ديناميكية، ملء الشاشة، طمس فوري، وعلامة مائية</p></div>
+    <div class="stat-box"><div style="font-size:26px">🛡️</div><h3>حماية ضد الغش</h3><p class="mut" style="font-size:12.5px">أكواد ديناميكية، رصد الهاتف بالكاميرا والصوت، وحظر جغرافي</p></div>
     <div class="stat-box"><div style="font-size:26px">⚡</div><h3>تصحيح وتحليل فوري</h3><p class="mut" style="font-size:12.5px">متوسط ووسيط ورسوم بيانية وتحديد الأوائل والغائبين</p></div>
     <div class="stat-box"><div style="font-size:26px">📂</div><h3>تكامل الملفات</h3><p class="mut" style="font-size:12.5px">استيراد كشوف Excel و Word وتصدير نسخ HTML دائمة</p></div>
     <div class="stat-box"><div style="font-size:26px">📱</div><h3>توافق شامل</h3><p class="mut" style="font-size:12.5px">يعمل بسلاسة على الهواتف الذكية والأجهزة اللوحية والحواسيب</p></div>
   </div>
-
   <div class="card">
     <div class="row between" style="margin-bottom:12px">
       <h2 style="margin:0">🚀 كيف تعمل منصة إتقان في 3 خطوات؟</h2>
       <button class="btn pri sm" onclick="platformGuide()">📖 استكشف الدليل والمميزات الكاملة</button>
     </div>
     <div class="grid3" style="margin-top:14px;text-align:center">
-      <div class="card-soft"><div class="step-num">1</div><h3>أنشئ اختبارك</h3><p class="mut" style="font-size:13px">أضف الأسئلة والصور وحدد كشف الطلاب المسموح لهم وخيارات الأمان</p></div>
+      <div class="card-soft"><div class="step-num">1</div><h3>أنشئ اختبارك</h3><p class="mut" style="font-size:13px">أضف الأسئلة والصور وحدد كشف الطلاب المسموح لهم وخيارات الأمان والموقع</p></div>
       <div class="card-soft"><div class="step-num">2</div><h3>شارك الكود والرابط</h3><p class="mut" style="font-size:13px">اعرض رمز QR والكود السداسي والرابط المباشر المتجدد تلقائياً</p></div>
       <div class="card-soft"><div class="step-num">3</div><h3>احصد النتائج</h3><p class="mut" style="font-size:13px">راقب الحضور لحظياً وصدّر كشف الدرجات والتقديرات إلى Excel</p></div>
     </div>
   </div>`, 'home');
 }
-
 /* ============== صفحة دليل المنصة ومميزاتها الشاملة ============== */
 function platformGuide(){
   clearLoops();
@@ -307,7 +334,6 @@ function platformGuide(){
       </div>
     </div>
   </div>
-
   <div class="card">
     <h2>🎯 أولاً: أهمية المنصة والقيمة المضافة للتعليم</h2>
     <div class="grid2">
@@ -329,7 +355,6 @@ function platformGuide(){
       </div>
     </div>
   </div>
-
   <div class="card">
     <h2>⚙️ ثانياً: الإمكانيات والمميزات التقنية بالتفصيل</h2>
     <div class="grid2">
@@ -340,23 +365,21 @@ function platformGuide(){
           <li><b>دعم الوسائط والدرجات:</b> إرفاق صور توضيحية لكل سؤال وتحديد وزنه النسبي من الدرجات.</li>
           <li><b>توقيت مرن:</b> مؤقت كلي للاختبار + مؤقت مستقل لكل سؤال (20 إلى 90 ثانية) لمنع البحث عن الإجابات.</li>
           <li><b>تقييد الدخول بالكشف (Whitelist):</b> رفع ملف Excel أو Word بأسماء وأرقام الطلاب لمنع دخول غير المقيدين.</li>
+          <li><b>تحديد الموقع الجغرافي المرن (Geofencing):</b> التقاط موقع القاعة تلقائياً مع إمكانية توسيع الإطار يدوياً للمدرجات الكبيرة.</li>
           <li><b>بنك الأسئلة الدائم والتصدير:</b> حفظ الأسئلة في البنك الشخصي وتصدير/استيراد الاختبارات والبنك بصيغة HTML.</li>
-          <li><b>وضع المعاينة:</b> تجربة الاختبار بواجهة الطالب قبل إطلاقه للتحقق من التنسيق.</li>
         </ul>
       </div>
-
       <div class="card-soft">
         <h3>🛡️ 2. منظومة الأمن ومكافحة الغش</h3>
         <ul class="guide-list">
           <li><b>أكواد وروابط متجددة:</b> كود سداسي ورمز QR ورابط مباشر يتغير تلقائياً كل 30-120 ثانية داخل القاعة.</li>
-          <li><b>وضع ملء الشاشة الإجباري:</b> قفل المحاولة فوراً إذا خرج الطالب من وضع Fullscreen.</li>
-          <li><b>رصد المغادرة وتقسيم الشاشة:</b> كشف تبديل التبويبات أو سحب الإشعارات أو تصغير النافذة وإبلاغ المعلم.</li>
-          <li><b>الطمس الفوري (Blur):</b> إخفاء الأسئلة تلقائياً عند فقدان تركيز الصفحة.</li>
+          <li><b>كشف الهاتف الثاني بالكاميرا الذكية:</b> رصد أي هاتف إضافي موجه نحو الشاشة أو تغطية الكاميرا تلقائياً.</li>
+          <li><b>كشف الإملاء الصوتي للذكاء الاصطناعي:</b> مراقبة الميكروفون لرصد التحدث المستمر أثناء الاختبار.</li>
+          <li><b>وضع ملء الشاشة والطمس الفوري:</b> قفل المحاولة فوراً عند الخروج من الشاشة أو فتح تطبيقات عائمة.</li>
           <li><b>منع النسخ والتصوير:</b> تعطيل النقر الأيمن والنسخ واختصارات لوحة المفاتيح وزر PrintScreen ومنع الطباعة.</li>
-          <li><b>علامة مائية ديناميكية:</b> عرض اسم الطالب ورقمه الجامعي في خلفية الشاشة طوال الاختبار.</li>
+          <li><b>علامة مائية متحركة:</b> عرض اسم الطالب ورقمه الجامعي في خلفية الشاشة طوال الاختبار.</li>
         </ul>
       </div>
-
       <div class="card-soft">
         <h3>📊 3. التحليل الإحصائي والتقارير</h3>
         <ul class="guide-list">
@@ -367,7 +390,6 @@ function platformGuide(){
           <li><b>تحليل صعوبة الأسئلة:</b> إبراز الأسئلة التي تقل نسبة إجابتها الصحيحة عن 60%.</li>
         </ul>
       </div>
-
       <div class="card-soft">
         <h3>🎓 4. تجربة الطالب والشهادات</h3>
         <ul class="guide-list">
@@ -379,7 +401,6 @@ function platformGuide(){
       </div>
     </div>
   </div>
-
   <div class="card">
     <h2>📝 ثالثاً: خطوات التسجيل والاستخدام التفصيلية</h2>
     <div class="grid3">
@@ -391,7 +412,7 @@ function platformGuide(){
       <div class="card-soft">
         <div class="step-num">2</div>
         <h3>إعداد الاختبار</h3>
-        <p class="mut" style="font-size:13.5px">اضغط <b>＋ إنشاء اختبار جديد</b>، أدخل العنوان والمدة، أضف الأسئلة أو استوردها من البنك، وارفع كشف الطلاب (Excel/Word) إذا رغبت، ثم اضغط <b>حفظ</b>.</p>
+        <p class="mut" style="font-size:13.5px">اضغط <b>＋ إنشاء اختبار جديد</b>، أدخل العنوان والمدة، أضف الأسئلة أو استوردها من البنك، واضبط خيارات الموقع والأمان، ثم اضغط <b>حفظ</b>.</p>
       </div>
       <div class="card-soft">
         <div class="step-num">3</div>
@@ -416,7 +437,6 @@ function platformGuide(){
     </div>
   </div>`, 'guide');
 }
-
 /* ============== تبويب منشئ المنصة ============== */
 function aboutCreator(){
   clearLoops();
@@ -448,7 +468,6 @@ function aboutCreator(){
     </div>
   </div>`, 'creator');
 }
-
 /* ============== مصادقة المعلم ============== */
 function tAuth(mode='login'){
   show(`<div style="max-width:450px;margin:2vh auto"><div class="card">
@@ -459,9 +478,7 @@ function tAuth(mode='login'){
       <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
       المتابعة باستخدام حساب Google (Gmail)
     </button>
-
     <div class="divider">أو بالبريد الإلكتروني وكلمة المرور</div>
-
     <div class="tabs">
       <button class="btn ${mode==='login'?'on':''}" style="flex:1" id="tL">تسجيل الدخول</button>
       <button class="btn ${mode==='reg'?'on':''}" style="flex:1" id="tR">حساب جديد</button>
@@ -472,10 +489,8 @@ function tAuth(mode='login'){
     ${mode==='login'?'<div style="text-align:left;margin-top:6px"><a href="#" id="rst" style="color:#0ea5e9;font-size:13px;font-weight:700;text-decoration:none">نسيت كلمة المرور؟ استعادتها عبر البريد</a></div>':''}
     <button class="btn pri" style="width:100%;margin-top:16px" id="go">${mode==='login'?'دخول لوحة التحكم':'إنشاء الحساب'}</button>
   </div></div>`, 'teacher');
-
   $('#tL').onclick=()=>tAuth('login');
   $('#tR').onclick=()=>tAuth('reg');
-
   $('#gBtn').onclick=async()=>{
     try{
       const provider = new firebase.auth.GoogleAuthProvider();
@@ -489,7 +504,6 @@ function tAuth(mode='login'){
       dash();
     }catch(e){ toast('تعذر الدخول عبر Google: ' + e.message); }
   };
-
   if($('#rst')) $('#rst').onclick=async(e)=>{
     e.preventDefault();
     const email = $('#em').value.trim();
@@ -499,7 +513,6 @@ function tAuth(mode='login'){
       toast('تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني!');
     }catch(err){ toast('خطأ: ' + err.message); }
   };
-
   $('#go').onclick=async()=>{
     try{
       const email=$('#em').value.trim(), pass=$('#pw').value;
@@ -532,7 +545,6 @@ function tAuth(mode='login'){
     }
   };
 }
-
 /* ============== تصدير واستيراد الاختبار وبنك الأسئلة (HTML Backup) ============== */
 function exportExamHtml(ex){
   if(!confirm('هل تريد حفظ نسخة من هذا الاختبار على جهازك؟')) return;
@@ -545,7 +557,6 @@ function exportExamHtml(ex){
     ${q.type==='tf'?`<p>الإجابة: <b>${q.correct===0?'صح':'خطأ'}</b></p>`:''}
     ${q.type==='short'?`<p>الإجابة النموذجية: <b>${esc(q.correct)}</b></p>`:''}
   </div>`).join('');
-
   const htmlDoc = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>نسخة اختبار: ${esc(ex.title)} - منصة Itqan</title>
   <style>body{font-family:Tahoma,Arial,sans-serif;max-width:820px;margin:24px auto;padding:20px;background:#f1f5f9;color:#0f172a}
   .box{background:#fff;padding:24px;border-radius:16px;border:1px solid #cbd5e1}h1{color:#1e3a8a}</style></head>
@@ -555,7 +566,6 @@ function exportExamHtml(ex){
   <hr>${qPreview}</div>
   <script id="itqan-exam-data" type="application/json">${payload}<\/script>
   </body></html>`;
-
   const blob = new Blob([htmlDoc], {type:'text/html;charset=utf-8'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -563,7 +573,6 @@ function exportExamHtml(ex){
   a.click();
   toast('تم تنزيل نسخة الاختبار بصيغة HTML على جهازك بنجاح');
 }
-
 async function importExamHtml(file){
   try{
     const txt = await file.text();
@@ -580,7 +589,6 @@ async function importExamHtml(file){
     dash();
   }catch(e){ toast('تعذر استيراد الملف: ' + e.message); }
 }
-
 function exportQBankHtml(bankList, tName){
   if(!bankList.length) return toast('بنك الأسئلة فارغ حالياً');
   if(!confirm(`هل تريد حفظ نسخة احتياطية كاملة لبنك الأسئلة (${bankList.length} سؤال) على جهازك؟`)) return;
@@ -591,7 +599,6 @@ function exportQBankHtml(bankList, tName){
     ${q.type==='tf'?`<p>الإجابة: <b>${q.correct===0?'صح':'خطأ'}</b></p>`:''}
     ${q.type==='short'?`<p>الإجابة النموذجية: <b>${esc(q.correct)}</b></p>`:''}
   </div>`).join('');
-
   const htmlDoc = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>نسخة بنك الأسئلة - ${esc(tName)} - منصة Itqan</title>
   <style>body{font-family:Tahoma,Arial,sans-serif;max-width:820px;margin:24px auto;padding:20px;background:#f1f5f9;color:#0f172a}
   .box{background:#fff;padding:24px;border-radius:16px;border:1px solid #cbd5e1}h1{color:#1e3a8a}</style></head>
@@ -601,7 +608,6 @@ function exportQBankHtml(bankList, tName){
   <hr>${qPreview}</div>
   <script id="itqan-qbank-data" type="application/json">${payload}<\/script>
   </body></html>`;
-
   const blob = new Blob([htmlDoc], {type:'text/html;charset=utf-8'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -609,7 +615,6 @@ function exportQBankHtml(bankList, tName){
   a.click();
   toast(`تم تنزيل نسخة بنك الأسئلة (${bankList.length} سؤال) على جهازك بنجاح`);
 }
-
 async function importQBankHtml(file, teacherId){
   try{
     const txt = await file.text();
@@ -625,7 +630,6 @@ async function importQBankHtml(file, teacherId){
     return true;
   }catch(e){ toast('تعذر استيراد بنك الأسئلة: ' + e.message); return false; }
 }
-
 /* ============== معاينة الاختبار كطالب ============== */
 async function previewExam(id){
   const ex = await fb(`exams/${id}`);
@@ -657,7 +661,6 @@ async function previewExam(id){
   document.body.appendChild(m);
   drawP();
 }
-
 /* ============== لوحة تحكم المعلم + البحث والتصفية + الأرشفة ============== */
 async function dash(){
   clearLoops();
@@ -670,12 +673,10 @@ async function dash(){
     await auth.signOut().catch(()=>{}); saveT(null);
     return show('<div class="card center" style="padding:40px"><div class="big">🚫</div><h2>تم إيقاف هذا الحساب من قِبل إدارة المنصة</h2></div>', 'home');
   }
-
   const all = await fb('exams') || {};
   const myExams = Object.values(all).filter(x => x && x.owner === curT.id);
   const now = Date.now();
   let autoDeletedCount = 0;
-
   const activeList = [];
   for(const e of myExams){
     const lastAct = e.lastUsed || e.created || now;
@@ -688,17 +689,14 @@ async function dash(){
     }
   }
   if(autoDeletedCount > 0) toast(`تنبيه الصيانة التلقائية: تم حذف ${autoDeletedCount} اختبار قديم مرّ عليه أكثر من 5 أشهر دون استخدام (أسئلتك المحفوظة في بنك الأسئلة ما زالت آمنة).`);
-
   const list = activeList.sort((a,b)=>(b.lastUsed||b.created||0)-(a.lastUsed||a.created||0));
   let qFilter = '', statusFilter = 'all';
-
   const renderDash = () => {
     const filtered = list.filter(e => {
       const matchText = !qFilter || e.title.toLowerCase().includes(qFilter);
       const matchStatus = statusFilter==='all' || (statusFilter==='open'&&e.open) || (statusFilter==='closed'&&!e.open) || (statusFilter==='restricted'&&e.restrictStudents);
       return matchText && matchStatus;
     });
-
     show(`<div class="card"><div class="row between">
       <div><h1>أهلاً بك، ${esc(curT.name)}</h1><span class="mut">${esc(curT.email)}</span></div>
       <div class="row">
@@ -722,6 +720,9 @@ async function dash(){
           <span class="badge b-purp">${e.duration} دقيقة</span>
           ${e.qTimer>0?`<span class="badge b-warn">⏱️ ${e.qTimer} ث/سؤال</span>`:''}
           ${e.restrictStudents?`<span class="badge b-ok">🔒 كشف (${(e.allowedList||[]).length} طالب)</span>`:''}
+          ${e.geofence?.enabled?`<span class="badge b-info">📍 نطاق (${(e.geofence.baseRadius||30)+(e.geofence.extraRadius||0)}م)</span>`:''}
+          ${e.antiCam?`<span class="badge b-purp">📷 كاميرا</span>`:''}
+          ${e.antiAudio?`<span class="badge b-purp">🎙️ صوت</span>`:''}
         </div>
       </div>
       <div class="row">
@@ -732,7 +733,6 @@ async function dash(){
         <button class="btn sm" data-exp="${e.id}">📥 HTML</button>
         <button class="btn bad sm" onclick="delEx('${e.id}')">🗑️</button>
       </div></div></div>`).join(''):'<div class="card center mut" style="padding:40px">لا توجد اختبارات مطابقة للبحث الحالي.</div>'}</div>`, 'teacher');
-
     document.querySelectorAll('[data-exp]').forEach(b => b.onclick = () => {
       const ex = list.find(x => x.id === b.dataset.exp);
       if(ex) exportExamHtml(ex);
@@ -759,7 +759,6 @@ async function dash(){
   };
   renderDash();
 }
-
 async function delEx(id){
   if(!confirm('هل تريد حذف هذا الاختبار ونتائجه نهائياً؟\n(ملاحظة: الأسئلة التي قمت بحفظها في بنك الأسئلة الشخصي ستبقى محفوظة ولن تُحذف)')) return;
   await fb(`exams/${id}`,'DELETE');
@@ -767,18 +766,31 @@ async function delEx(id){
   toast('تم حذف الاختبار (بنك الأسئلة الشخصي محفوظ بأمان)');
   dash();
 }
-
-/* ============== منشئ الاختبار + بنك الأسئلة + مؤقت السؤال + كشف الطلاب ============== */
+/* ============== منشئ الاختبار + بنك الأسئلة + مؤقت السؤال + كشف الطلاب + الموقع الجغرافي + المراقبة الذكية ============== */
 const QT={mcq:'اختيار من متعدد',multi:'متعدد الإجابات',tf:'صح / خطأ',short:'إجابة قصيرة',essay:'مقالي'};
 async function builder(id){
   const curT = activeTeacher();
-  let M = id ? await fb(`exams/${id}`) : {title:'',desc:'',duration:30,qTimer:0,shuffleQ:true,shuffleO:true,allowBack:false,showScore:false,rotate:45,restrictStudents:false,allowedList:[],questions:[]};
+  let M = id ? await fb(`exams/${id}`) : {title:'',desc:'',duration:30,qTimer:0,shuffleQ:true,shuffleO:true,allowBack:false,showScore:false,rotate:45,restrictStudents:false,allowedList:[],antiCam:false,antiAudio:false,geofence:{enabled:false,lat:null,lng:null,baseRadius:30,extraRadius:0},questions:[]};
   M.questions = M.questions || [];
   M.allowedList = M.allowedList || [];
+  M.geofence = M.geofence || {enabled:false, lat:null, lng:null, baseRadius:30, extraRadius:0};
   if(id) fb(`exams/${id}`, 'PATCH', {lastUsed:Date.now()}).catch(()=>{});
-
   const mk=t=>({id:rid(4),type:t,text:'',img:'',points:1,...(t==='mcq'?{options:['',''],correct:0}:t==='multi'?{options:['',''],correct:[]}:t==='tf'?{correct:0}:t==='short'?{correct:''}:{})});
-
+  const captureTeacherLocation = () => {
+    if(!navigator.geolocation) return toast('متصفحك لا يدعم تحديد الموقع الجغرافي');
+    toast('📍 جاري التقاط إحداثيات قاعة الاختبار بدقة...');
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        M.geofence.lat = Number(pos.coords.latitude.toFixed(6));
+        M.geofence.lng = Number(pos.coords.longitude.toFixed(6));
+        M.geofence.baseRadius = 30;
+        toast(`✅ تم تحديد موقع القاعة بنجاح (دقة الإشارة: ${Math.round(pos.coords.accuracy)} متر)`);
+        draw();
+      },
+      () => toast('⚠️ تعذر الوصول للموقع، تأكد من تفعيل GPS ومنح الإذن للمتصفح'),
+      {enableHighAccuracy:true, timeout:10000, maximumAge:0}
+    );
+  };
   const parseStudentFile = async (file) => {
     try{
       const ext = file.name.split('.').pop().toLowerCase();
@@ -826,7 +838,6 @@ async function builder(id){
       draw();
     }catch(err){ toast('خطأ في قراءة الملف: ' + err.message); }
   };
-
   const openBankModal = async () => {
     const bankObj = await fb(`qbank/${curT.id}`) || {};
     const bankList = Object.values(bankObj);
@@ -874,8 +885,8 @@ async function builder(id){
       await fb(`qbank/${curT.id}/${b.dataset.delb}`, 'DELETE'); toast('تم الحذف من البنك'); m.remove(); openBankModal();
     });
   };
-
   const draw=()=>{
+    const totalGeoRadius = (Number(M.geofence.baseRadius)||30) + (Number(M.geofence.extraRadius)||0);
     show(`<div class="row between" style="margin-bottom:12px"><h1>${id?'✏️ تعديل الاختبار':'🆕 إنشاء اختبار جديد'}</h1><button class="btn" id="bk">→ رجوع</button></div>
     <div class="policy-alert">
       ⏳ <b>تنبيه هام:</b> أي اختبار لا يتم استخدامه لمدة تتجاوز <b>5 أشهر</b> يُحذف تلقائياً؛ لذا ننصحك دائماً بعمل <b>تصدير (📥 HTML)</b> لحفظ نسخة على جهازك. أما الأسئلة المحفوظة في <b>بنك الأسئلة الشخصي (⭐)</b> فتبقى محفوظة لديك دائماً ويمكنك تصدير البنك بالكامل كنسخة احتياطية.
@@ -888,6 +899,49 @@ async function builder(id){
       </div>
       <div class="row" style="margin-top:14px">${[['shuffleQ','ترتيب عشوائي للأسئلة'],['shuffleO','ترتيب عشوائي للخيارات'],['allowBack','السماح بالرجوع للأسئلة السابقة'],['showScore','إظهار الدرجة وشهادة الاجتياز للطالب']].map(c=>`<label class="row" style="margin:0;cursor:pointer"><input type="checkbox" style="width:auto;margin:0" data-f="${c[0]}" ${M[c[0]]?'checked':''}> ${c[1]}</label>`).join('')}</div>
       
+      <!-- خيارات مكافحة الغش بالهاتف الثاني والذكاء الاصطناعي (اختياري بيد المعلم) -->
+      <div class="sec-box">
+        <b style="color:#6d28d9;font-size:14px">🛡️ حماية متقدمة ضد الغش بهاتف ثانٍ والذكاء الاصطناعي (اختياري):</b>
+        <div class="row" style="margin-top:10px;gap:16px">
+          <label class="row" style="margin:0;cursor:pointer;color:var(--tx)">
+            <input type="checkbox" style="width:auto;margin:0" data-f="antiCam" ${M.antiCam?'checked':''}>
+            📷 <b>كشف الهاتف الثاني بالكاميرا الذكية</b> (يغلق الاختبار فوراً إذا رصدت الكاميرا هاتفاً آخر أو تم تغطيتها)
+          </label>
+          <label class="row" style="margin:0;cursor:pointer;color:var(--tx)">
+            <input type="checkbox" style="width:auto;margin:0" data-f="antiAudio" ${M.antiAudio?'checked':''}>
+            🎙️ <b>منع التحدث وإملاء الذكاء الاصطناعي</b> (يرصد الصوت المسموع المستمر عبر الميكروفون)
+          </label>
+        </div>
+      </div>
+
+      <!-- ميزة تحديد الموقع التلقائي + التوسيع اليدوي للقاعات الكبيرة (اختياري بيد المعلم) -->
+      <div class="geo-box">
+        <label class="row" style="margin:0;cursor:pointer;color:#0369a1;font-size:14px">
+          <input type="checkbox" style="width:auto;margin:0" id="geoToggle" ${M.geofence.enabled?'checked':''}>
+          📍 تفعيل تحديد الموقع الجغرافي للقاعة تلقائياً (اختياري — يمنع دخول الطلاب من خارج القاعة)
+        </label>
+        ${M.geofence.enabled ? `<div style="margin-top:12px">
+          <div class="row between">
+            <div>
+              ${M.geofence.lat ? `<span class="badge b-ok">✔ تم التقاط موقع القاعة (${M.geofence.lat}, ${M.geofence.lng})</span>` : '<span class="badge b-warn">⚠️ لم يتم تحديد إحداثيات القاعة بعد</span>'}
+            </div>
+            <button type="button" class="btn pri sm" id="geoSnapBtn">📡 التقاط موقع القاعة الحالي تلقائياً</button>
+          </div>
+          <div style="margin-top:12px;background:var(--card);padding:12px;border-radius:12px;border:1px solid var(--bd)">
+            <div class="row between">
+              <label style="margin:0;color:var(--tx)">📏 توسيع إطار الموقع يدوياً للقاعات والمدرجات الكبيرة:</label>
+              <span class="badge b-info" id="geoRadiusBadge">النطاق الكلي: ${totalGeoRadius} متر (30م أساسي + ${M.geofence.extraRadius||0}م إضافي)</span>
+            </div>
+            <input type="range" id="geoExtraRange" min="0" max="200" step="10" value="${M.geofence.extraRadius||0}" style="margin-top:8px;padding:0">
+            <div class="row between mut" style="font-size:12px;margin-top:4px">
+              <span>قاعة صغيرة (0م إضافي)</span>
+              <span>مدرج متوسط (+80م)</span>
+              <span>مدرج ضخم / مبنى (+200م)</span>
+            </div>
+          </div>
+        </div>` : ''}
+      </div>
+
       <div class="wl-box">
         <label class="row" style="margin:0;cursor:pointer;color:#15803d;font-size:14px">
           <input type="checkbox" style="width:auto;margin:0" data-f="restrictStudents" ${M.restrictStudents?'checked':''}>
@@ -915,6 +969,17 @@ async function builder(id){
     
     $('#bk').onclick=dash;
     $('#opBank').onclick=openBankModal;
+    $('#geoToggle').onchange = e => {
+      M.geofence.enabled = e.target.checked;
+      if(M.geofence.enabled && !M.geofence.lat) captureTeacherLocation();
+      else draw();
+    };
+    if($('#geoSnapBtn')) $('#geoSnapBtn').onclick = captureTeacherLocation;
+    if($('#geoExtraRange')) $('#geoExtraRange').oninput = e => {
+      M.geofence.extraRadius = Number(e.target.value)||0;
+      const tot = (Number(M.geofence.baseRadius)||30) + M.geofence.extraRadius;
+      if($('#geoRadiusBadge')) $('#geoRadiusBadge').textContent = `النطاق الكلي: ${tot} متر (30م أساسي + ${M.geofence.extraRadius}م إضافي)`;
+    };
     if($('#wlFile')) $('#wlFile').onchange = e => { if(e.target.files[0]) parseStudentFile(e.target.files[0]); };
     if($('#clrWl')) $('#clrWl').onclick = () => { M.allowedList = []; draw(); };
     $('#sv').onclick=async()=>{
@@ -922,6 +987,7 @@ async function builder(id){
         if(!M.title.trim()) throw new Error('اكتب عنوان الاختبار');
         if(!M.questions.length) throw new Error('أضف سؤالاً واحداً على الأقل');
         if(M.restrictStudents && !M.allowedList.length) throw new Error('فعّلت خيار تقييد الدخول، يرجى رفع ملف Excel أو Word بأسماء وأرقام الطلاب أولاً');
+        if(M.geofence.enabled && (!M.geofence.lat || !M.geofence.lng)) throw new Error('فعّلت تحديد الموقع الجغرافي، يرجى الضغط على زر (التقاط موقع القاعة الحالي تلقائياً) قبل الحفظ');
         const eid = id || rid(6);
         const now = Date.now();
         const data = {...M, id:eid, owner:M.owner||curT.id, open:M.open||false, created:M.created||now, lastUsed:now};
@@ -953,7 +1019,6 @@ async function builder(id){
   };
   draw();
 }
-
 /* ============== الاختبار (مع إظهار الرابط المباشر وزر النسخ) ============== */
 async function live(id){
   clearLoops();
@@ -969,6 +1034,9 @@ async function live(id){
     show(`<div class="row between" style="margin-bottom:12px"><h1>📡 الاختبار: ${esc(ex.title)}</h1><div class="row"><button class="btn" onclick="results('${id}')">📊 النتائج</button><button class="btn" id="bk">→ رجوع</button></div></div>
     <div class="card center"><span class="badge ${ex.open?'b-ok':'b-bad'}">${ex.open?'الاختبار مفتوح للطلاب الآن':'الاختبار مغلق'}</span>
       ${ex.restrictStudents?` <span class="badge b-purp">🔒 الدخول مقيّد بالكشف (${(ex.allowedList||[]).length} طالب)</span>`:''}
+      ${ex.geofence?.enabled?` <span class="badge b-info">📍 نطاق القاعة: ${(ex.geofence.baseRadius||30)+(ex.geofence.extraRadius||0)} متر</span>`:''}
+      ${ex.antiCam?` <span class="badge b-purp">📷 رصد الكاميرا مفعّل</span>`:''}
+      ${ex.antiAudio?` <span class="badge b-purp">🎙️ رصد الصوت مفعّل</span>`:''}
       ${ex.open?`<div class="codebox">${ex.code}</div>
       <div class="qrbox"><div id="qr"></div></div>
       <div style="max-width:500px;margin:14px auto 6px;background:var(--card2);border:1px solid var(--bd);border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px">
@@ -992,7 +1060,7 @@ async function live(id){
   const poll = async() => {
     const atts = Object.values(await fb(`attempts/${id}`) || {});
     if($('#cnt')) $('#cnt').textContent = atts.length;
-    if($('#st')) $('#st').innerHTML = atts.length ? `<table><tr><th>الطالب</th><th>الرقم الجامعي</th><th>الحالة</th><th>الدرجة</th></tr>${atts.map(a=>`<tr><td><b>${esc(a.name)}</b></td><td>${esc(a.sid)}</td><td><span class="badge ${a.status==='submitted'?'b-ok':a.status==='locked'?'b-bad':'b-info'}">${a.status==='submitted'?'تم التسليم':a.status==='locked'?'مقفل (مخالفة)':'يؤدي الاختبار'}</span></td><td>${a.score??'-'} / ${a.total}</td></tr>`).join('')}</table>` : '<p class="mut">بانتظار دخول الطلاب...</p>';
+    if($('#st')) $('#st').innerHTML = atts.length ? `<table><tr><th>الطالب</th><th>الرقم الجامعي</th><th>الحالة</th><th>الدرجة</th></tr>${atts.map(a=>`<tr><td><b>${esc(a.name)}</b></td><td>${esc(a.sid)}</td><td><span class="badge ${a.status==='submitted'?'b-ok':a.status==='locked'?'b-bad':'b-info'}">${a.status==='submitted'?'تم التسليم':a.status==='locked'?`مقفل (${esc(a.lastViolation||'مخالفة')})`:'يؤدي الاختبار'}</span></td><td>${a.score??'-'} / ${a.total}</td></tr>`).join('')}</table>` : '<p class="mut">بانتظار دخول الطلاب...</p>';
   };
   const startTimers = () => {
     clearLoops();
@@ -1008,7 +1076,6 @@ async function live(id){
   if(ex.open && !ex.code) await rot(); else draw();
   poll(); startTimers();
 }
-
 /* ============== لوحة النتائج والنتائج + المخطط الدائري + الغائبون ============== */
 async function results(id){
   clearLoops();
@@ -1017,7 +1084,6 @@ async function results(id){
   const atts = Object.values(await fb(`attempts/${id}`) || {});
   const qs = ex.questions || [];
   const totalPts = qs.reduce((s,q)=>s+(+q.points||1), 0);
-
   const submittedAtts = atts.filter(a => a.status === 'submitted');
   const scoredAtts = atts.filter(a => a.status === 'submitted' || a.status === 'locked');
   const scores = scoredAtts.map(a => Number(a.score ?? 0)).sort((a,b) => a - b);
@@ -1026,32 +1092,26 @@ async function results(id){
   const median = count ? (count%2 ? scores[Math.floor(count/2)] : ((scores[count/2-1]+scores[count/2])/2).toFixed(1)) : 0;
   const minS = count ? scores[0] : 0;
   const maxS = count ? scores[count-1] : 0;
-
   const freq = {};
   scores.forEach(s => freq[s] = (freq[s]||0) + 1);
   let modeVal = '-', maxFreq = 0;
   Object.entries(freq).forEach(([k,v]) => { if(v > maxFreq){ maxFreq = v; modeVal = `${k} (${v} طلاب)`; } });
-
   const getDuration = a => (a.finishedAt && a.startedAt) ? (a.finishedAt - a.startedAt) : (a.finishedAt || Infinity);
   const fmtDur = a => (a.finishedAt && a.startedAt) ? ` - ${Math.max(1, Math.round((a.finishedAt - a.startedAt)/1000))} ث` : '';
-
   const ranked = [...submittedAtts].sort((a,b) => (Number(b.score??0) - Number(a.score??0)) || (getDuration(a) - getDuration(b)));
   const firstStudent = ranked[0] ? `${ranked[0].name} (${Number(ranked[0].score??0)}/${totalPts}${fmtDur(ranked[0])})` : 'لا يوجد';
   const lowestRanked = [...scoredAtts].sort((a,b) => (Number(a.score??0) - Number(b.score??0)) || (getDuration(b) - getDuration(a)));
   const lastStudent = lowestRanked[0] ? `${lowestRanked[0].name} (${Number(lowestRanked[0].score??0)}/${totalPts})` : 'لا يوجد';
-
   const gDist = {ممتاز:0, 'جيد جداً':0, جيد:0, مقبول:0, ضعيف:0};
   scoredAtts.forEach(a => { const gi = getGradeInfo(a.score||0, a.total||totalPts); gDist[gi.grade]++; });
   const totG = Math.max(count, 1);
   const p1 = (gDist['ممتاز']/totG)*100, p2 = p1+(gDist['جيد جداً']/totG)*100, p3 = p2+(gDist['جيد']/totG)*100, p4 = p3+(gDist['مقبول']/totG)*100;
   const donutGrad = count ? `conic-gradient(#10b981 0% ${p1}%, #0ea5e9 ${p1}% ${p2}%, #8b5cf6 ${p2}% ${p3}%, #f59e0b ${p3}% ${p4}%, #ef4444 ${p4}% 100%)` : 'conic-gradient(#cbd5e1 0% 100%)';
-
   let absentees = [];
   if(ex.restrictStudents && Array.isArray(ex.allowedList)){
     const attendedSids = new Set(atts.map(a => normSid(a.sid)));
     absentees = ex.allowedList.filter(item => item.sid && !attendedSids.has(normSid(item.sid)));
   }
-
   const qStats = qs.map((q) => {
     let correctCount = 0;
     scoredAtts.forEach(a => {
@@ -1062,21 +1122,17 @@ async function results(id){
   });
   const hardQuestions = qStats.filter(q => count > 0 && q.ratio < 60).sort((a,b) => a.ratio - b.ratio);
   const maxBar = Math.max(...Object.values(freq), 1);
-
   show(`<div class="row between" style="margin-bottom:12px"><h1>📊 تحليل النتائج والنتائج: ${esc(ex.title)}</h1><div class="row"><button class="btn ok" id="csv">⬇ تصدير Excel/CSV</button><button class="btn" id="bk">→ رجوع</button></div></div>
-
   <div class="grid4" style="margin-bottom:16px">
     <div class="stat-box"><div class="mut">المتوسط الحسابي</div><div class="stat-val">${mean} / ${totalPts}</div><div class="mut">نقطة</div></div>
     <div class="stat-box"><div class="mut">الوسيط (Median)</div><div class="stat-val">${median} / ${totalPts}</div><div class="mut">نقطة</div></div>
     <div class="stat-box"><div class="mut">النطاق (الأدنى - الأعلى)</div><div class="stat-val">${minS} - ${maxS}</div><div class="mut">من ${totalPts} نقطة</div></div>
     <div class="stat-box"><div class="mut">الدرجة الأكثر تكراراً</div><div class="stat-val" style="font-size:19px">${modeVal}</div><div class="mut">المختبرون: ${count}${ex.restrictStudents?` | الغائبون: ${absentees.length}`:''}</div></div>
   </div>
-
   <div class="grid2" style="margin-bottom:16px">
     <div class="card-soft row between"><div><div class="mut">🏆 الطالب الأول (الأعلى درجة والأسرع)</div><b style="font-size:17px;color:#15803d">${esc(firstStudent)}</b></div><span style="font-size:28px">🥇</span></div>
     <div class="card-soft row between"><div><div class="mut">📉 الطالب الأخير (الأقل درجة)</div><b style="font-size:17px;color:#b91c1c">${esc(lastStudent)}</b></div><span style="font-size:28px">📌</span></div>
   </div>
-
   <div class="grid2">
     <div class="card">
       <h2>📈 توزيع إجمالي النقاط</h2>
@@ -1103,7 +1159,6 @@ async function results(id){
       </div>
     </div>
   </div>
-
   <div class="card">
     <h2>⚠️ الأسئلة الشائعة غير الصائبة (نسبة الإجابة الصحيحة أقل من 60%)</h2>
     ${hardQuestions.length ? hardQuestions.map(q=>`
@@ -1112,12 +1167,10 @@ async function results(id){
         <div><span class="badge b-bad">الإجابات الصحيحة: ${q.correctCount} / ${q.total} (${q.ratio}%)</span></div>
       </div>`).join('') : '<p class="mut">ممتاز! لا توجد أسئلة ذات نسبة خطأ مرتفعة حتى الآن.</p>'}
   </div>
-
   ${ex.restrictStudents ? `<div class="card">
     <h2>🚫 كشف الطلاب الغائبين عن الاختبار (${absentees.length} طالب)</h2>
     ${absentees.length ? `<div class="row" style="gap:8px">${absentees.map(ab=>`<span class="badge b-warn">${esc(ab.name||'طالب')} (${esc(ab.sid)})</span>`).join('')}</div>` : '<p class="mut">حضر جميع الطلاب المدرجين في الكشف بنسبة 100%!</p>'}
   </div>` : ''}
-
   <div class="card">
     <h2>📋 كشف درجات وتقديرات الطلاب</h2>
     <div class="table-wrap">
@@ -1139,7 +1192,6 @@ async function results(id){
     }).join('')}</table>`:'<p class="mut">لم يتقدم أي طالب للاختبار بعد.</p>'}
     </div>
   </div>`, 'teacher');
-
   $('#bk').onclick=dash;
   $('#csv').onclick=()=>{
     const rows=[['الاسم','الرقم الجامعي','الدرجة','الدرجة الكلية','النسبة %','التقدير','الحالة','أسئلة صائبة','أسئلة خاطئة','المخالفة'],...atts.map(a=>{
@@ -1172,14 +1224,12 @@ async function results(id){
   };
 }
 const fmtAns=(q,v)=>v===undefined||v===null||v===''?'لم يجب':q.type==='mcq'?q.options[v]:q.type==='multi'?(v||[]).map(i=>q.options[i]).join('، '):q.type==='tf'?(v===0?'صح':'خطأ'):v;
-
 /* ============== لوحة تحكم الأدمن / الروت المتقدمة ============== */
 async function rootPanel(onlyInactive=false){
   if(!realIsRoot()){ toast('⛔ صلاحية مرفوضة'); return home(); }
   impTeacher = null;
   clearLoops();
   show('<div class="card center mut">👑 جاري تحميل بيانات النظام وتحليل نشاط الحسابات...</div>', 'root');
-
   const [teachersObj, examsObj, attemptsObj, cfgObj] = await Promise.all([
     fb('teachers').catch(()=>({})),
     fb('exams').catch(()=>({})),
@@ -1187,9 +1237,8 @@ async function rootPanel(onlyInactive=false){
     fb('sysConfig').catch(()=>({}))
   ]);
   sysCfg = {maintenance:!!cfgObj?.maintenance, announcement:cfgObj?.announcement||''};
-
   const now = Date.now();
-  const INACTIVE_MS = 60 * 24 * 60 * 60 * 1000; // 60 يوماً
+  const INACTIVE_MS = 60 * 24 * 60 * 60 * 1000;
   const examsList = Object.values(examsObj || {});
   const teachersList = Object.values(teachersObj || {}).map(t => {
     const tExams = examsList.filter(e => e && e.owner === t.id);
@@ -1199,14 +1248,11 @@ async function rootPanel(onlyInactive=false){
     const isMe = String(t.email||'').toLowerCase() === ROOT_EMAIL;
     const isIdle = !isMe && (!lastAct || (now - lastAct) > INACTIVE_MS);
     return {...t, tExams, lastAct, daysIdle, isIdle, isMe};
-  }).sort((a,b) => (a.lastAct || 0) - (b.lastAct || 0)); // الأقدم نشاطاً يظهر أولاً
-
+  }).sort((a,b) => (a.lastAct || 0) - (b.lastAct || 0));
   const idleTeachers = teachersList.filter(t => t.isIdle);
   const displayedTeachers = onlyInactive ? idleTeachers : teachersList;
-
   let totalAttempts = 0;
   Object.values(attemptsObj || {}).forEach(exAtts => { totalAttempts += Object.keys(exAtts || {}).length; });
-
   const fmtDate = ts => {
     if(!ts) return 'لم يسجل نشاطاً';
     const d = new Date(ts).toLocaleDateString('ar-EG', {year:'numeric', month:'2-digit', day:'2-digit'});
@@ -1214,7 +1260,6 @@ async function rootPanel(onlyInactive=false){
     const ago = days === 0 ? 'اليوم' : days === 1 ? 'منذ يوم' : `منذ ${days} يوم`;
     return `${ago} (${d})`;
   };
-
   show(`<div class="card" style="background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;border:none">
     <div class="row between">
       <div><span class="badge" style="background:#fbbf24;color:#0f172a">صلاحيات الروت العليا (ROOT)</span><h1 style="color:#fff;margin-top:6px">👑 لوحة التحكم الشاملة — منصة Itqan</h1><span style="color:#94a3b8;font-size:13px">مراقبة نشاط الحسابات، تنظيف قاعدة البيانات، الصيانة، والدعم الفني</span></div>
@@ -1224,7 +1269,6 @@ async function rootPanel(onlyInactive=false){
       </div>
     </div>
   </div>
-
   <div class="grid2" style="margin-bottom:16px">
     <div class="card" style="margin:0">
       <h2>🛠️ وضع الصيانة الشامل (Maintenance Mode)</h2>
@@ -1244,14 +1288,12 @@ async function rootPanel(onlyInactive=false){
       </div>
     </div>
   </div>
-
   <div class="grid4" style="margin-bottom:16px">
     <div class="stat-box"><div class="mut">إجمالي المعلمين</div><div class="stat-val">${teachersList.length}</div><div class="mut">حساب مسجل</div></div>
     <div class="stat-box"><div class="mut">الحسابات الخاملة (+60 يوم)</div><div class="stat-val" style="background:linear-gradient(90deg,#ef4444,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent">${idleTeachers.length}</div><div class="mut">مرشحة للتنظيف</div></div>
     <div class="stat-box"><div class="mut">إجمالي الاختبارات</div><div class="stat-val">${examsList.length}</div><div class="mut">مفتوحة الآن: ${examsList.filter(e=>e.open).length}</div></div>
     <div class="stat-box"><div class="mut">إجمالي محاولات الطلاب</div><div class="stat-val">${totalAttempts}</div><div class="mut">مختبر مسجل</div></div>
   </div>
-
   <div class="card">
     <div class="row between" style="margin-bottom:12px">
       <h2 style="margin:0">👨‍🏫 سجل نشاط المعلمين والحسابات الخاملة (${displayedTeachers.length})</h2>
@@ -1279,7 +1321,6 @@ async function rootPanel(onlyInactive=false){
       </table>
     </div>
   </div>
-
   <div class="card">
     <h2>📚 جميع الاختبارات على المنصة (${examsList.length})</h2>
     <div class="table-wrap">
@@ -1304,7 +1345,6 @@ async function rootPanel(onlyInactive=false){
       </table>
     </div>
   </div>`, 'root');
-
   $('#mntBtn').onclick = async () => {
     const nextState = !sysCfg.maintenance;
     await fb('sysConfig', 'PATCH', {maintenance: nextState});
@@ -1336,7 +1376,6 @@ async function rootPanel(onlyInactive=false){
     toast('تم تنزيل النسخة الاحتياطية الكاملة لقاعدة البيانات بنجاح');
   };
 }
-
 async function rootLoginAs(tid){
   if(!realIsRoot()) return;
   const t = await fb(`teachers/${tid}`);
@@ -1345,7 +1384,6 @@ async function rootLoginAs(tid){
   toast(`تم الدخول بوضع الدعم الفني إلى حساب: ${t.name}`);
   dash();
 }
-
 async function rootForceClose(eid){
   if(!realIsRoot()) return;
   if(!confirm('هل تريد إغلاق هذه الاختبار فوراً ومنع دخول أي طالب جديد؟')) return;
@@ -1353,7 +1391,6 @@ async function rootForceClose(eid){
   toast('🛑 تم إغلاق الاختبار فوراً');
   rootPanel();
 }
-
 async function rootToggleBan(tid, banState){
   if(!realIsRoot()) return;
   if(!confirm(banState ? 'هل تريد حظر هذا المعلم ومنعه من الدخول للمنصة؟' : 'هل تريد فك الحظر عن هذا المعلم؟')) return;
@@ -1361,7 +1398,6 @@ async function rootToggleBan(tid, banState){
   toast(banState ? 'تم حظر الحساب بنجاح' : 'تم فك الحظر وتفعيل الحساب');
   rootPanel();
 }
-
 async function rootDeleteTeacher(tid, tName){
   if(!realIsRoot()) return;
   if(!confirm(`⚠️ تحذير: هل تريد حذف حساب المعلم "${tName}" نهائياً؟\nسيتم مسح بيانات الحساب وجميع اختباراته ونتائج طلابه وبنك أسئلته لتخفيف قاعدة البيانات!`)) return;
@@ -1377,7 +1413,6 @@ async function rootDeleteTeacher(tid, tName){
   toast(`✅ تم حذف حساب "${tName}" و (${tExams.length}) اختبار تابع له بنجاح`);
   rootPanel();
 }
-
 async function rootDelExam(eid){
   if(!realIsRoot()) return;
   if(!confirm('حذف هذا الاختبار ونتائجه نهائياً من قاعدة البيانات؟\n(بنك الأسئلة الخاص بالمعلم يظل محفوظاً)')) return;
@@ -1386,7 +1421,6 @@ async function rootDelExam(eid){
   toast('تم حذف الاختبار');
   rootPanel();
 }
-
 async function rootInspectTeacher(tid){
   if(!realIsRoot()) return;
   const [t, allExams] = await Promise.all([fb(`teachers/${tid}`), fb('exams')]);
@@ -1405,13 +1439,12 @@ async function rootInspectTeacher(tid){
   document.body.appendChild(m);
   $('#clM').onclick = () => m.remove();
 }
-
-/* ============== بوابة الطالب والحماية + خريطة الأسئلة + المؤقت الدائري + الشهادة ============== */
+/* ============== بوابة الطالب والحماية + الموقع الجغرافي + الكاميرا والصوت + خريطة الأسئلة + المؤقت + الشهادة ============== */
 function sJoin(pc=''){
   clearLoops();
   show(`<div style="max-width:450px;margin:2vh auto"><div class="card">
     <h2 class="center" style="margin-top:4px">🎓 دخول الاختبار — Itqan</h2>
-    <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:12px;padding:12px;margin:12px 0;font-size:13px;color:#92400e;font-weight:700">⚠️ تنبيه: يمنع تبديل التبويبات أو تصوير الشاشة أو سحب شريط الإشعارات أثناء الاختبار، وسيتم قفل المحاولة فوراً عند المخالفة.</div>
+    <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:12px;padding:12px;margin:12px 0;font-size:13px;color:#92400e;font-weight:700">⚠️ تنبيه: يمنع تبديل التبويبات أو تصوير الشاشة أو استخدام هاتف ثانٍ أو التحدث أثناء الاختبار، وسيتم قفل المحاولة فوراً عند المخالفة.</div>
     <label>كود الدخول (6 أرقام)</label><input id="cd" dir="ltr" maxlength="6" style="font-size:24px;text-align:center;letter-spacing:.2em;font-weight:800" value="${esc(pc)}">
     <label>اسم الطالب الثلاثي</label><input id="nm" placeholder="اكتب اسمك الكامل">
     <label>الرقم الجامعي / رقم الجلوس</label><input id="si" dir="ltr" placeholder="2026001">
@@ -1423,7 +1456,6 @@ function sJoin(pc=''){
       const all = await fb('exams') || {};
       const ex = Object.values(all).find(x => x && x.open && String(x.code) === code);
       if(!ex) return toast('كود الدخول غير صحيح أو انتهت صلاحيته');
-
       if(ex.restrictStudents && Array.isArray(ex.allowedList) && ex.allowedList.length > 0){
         const sNorm = normSid(sid);
         const nNorm = name.trim().replace(/\s+/g,' ');
@@ -1436,33 +1468,150 @@ function sJoin(pc=''){
           return toast('⛔ عذراً، اسمك أو رقمك غير مدرج في قائمة الطلاب المسموح لهم بدخول هذا الاختبار. راجع معلمك.');
         }
       }
-
+      // التحقق من الموقع الجغرافي للقاعة إذا كان المعلم قد فعّله
+      if(ex.geofence && ex.geofence.enabled){
+        toast('📍 جاري التحقق من وجودك داخل نطاق قاعة الاختبار...');
+        try{
+          await checkStudentGeofence(ex.geofence);
+        }catch(geoErr){
+          return toast(String(geoErr));
+        }
+      }
+      // تجهيز الكاميرا والميكروفون إذا فعّلهما المعلم قبل بدء الاختبار
+      let preCamStream = null, preAudioStream = null;
+      if(ex.antiCam){
+        try{
+          preCamStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user', width:320, height:240}, audio:false});
+          activeMediaStreams.push(preCamStream);
+        }catch{
+          return toast('📷 يتطلب هذا الاختبار تفعيل الكاميرا الأمامية لمنع الغش. يرجى السماح بالوصول للكاميرا.');
+        }
+      }
+      if(ex.antiAudio){
+        try{
+          preAudioStream = await navigator.mediaDevices.getUserMedia({audio:true, video:false});
+          activeMediaStreams.push(preAudioStream);
+        }catch{
+          stopProctoringMedia();
+          return toast('🎙️ يتطلب هذا الاختبار تفعيل الميكروفون لرصد الصوت المحيط. يرجى السماح بالوصول للميكروفون.');
+        }
+      }
       const atts = Object.values(await fb(`attempts/${ex.id}`) || {});
       let att = atts.find(a => a && normSid(a.sid) === normSid(sid));
-      if(att && att.status === 'submitted') return toast('لقد قمت بتسليم هذا الاختبار مسبقاً');
-      if(att && att.status === 'locked') return toast('تم قفل اختبارك بسبب مخالفة، راجع المعلم');
+      if(att && att.status === 'submitted'){ stopProctoringMedia(); return toast('لقد قمت بتسليم هذا الاختبار مسبقاً'); }
+      if(att && att.status === 'locked'){ stopProctoringMedia(); return toast('تم قفل اختبارك بسبب مخالفة، راجع المعلم'); }
+      const sessionToken = rid(10);
       if(!att){
         const qs = ex.shuffleQ ? shuffle(ex.questions) : ex.questions;
         const order = qs.map(q=>({id:q.id, opts:(q.type==='mcq'||q.type==='multi')?(ex.shuffleO?shuffle(q.options.map((_,i)=>i)):q.options.map((_,i)=>i)):null}));
         const total = ex.questions.reduce((s,q)=>s+(+q.points||1),0);
         const aid = rid(8);
-        att = {id:aid, examId:ex.id, name, sid, status:'active', startedAt:Date.now(), answers:{}, total, order};
+        att = {id:aid, examId:ex.id, name, sid, status:'active', startedAt:Date.now(), answers:{}, total, order, sessionToken};
         await fb(`attempts/${ex.id}/${aid}`, 'PUT', att);
+      } else {
+        att.sessionToken = sessionToken;
+        await fb(`attempts/${ex.id}/${att.id}`, 'PATCH', {sessionToken});
       }
-      startExam(ex, att);
-    }catch(e){toast(e.message)}
+      startExam(ex, att, preCamStream, preAudioStream);
+    }catch(e){stopProctoringMedia();toast(e.message)}
   };
 }
-
-function startExam(ex, att){
+function startExam(ex, att, camStream=null, audioStream=null){
   clearLoops();
+  if(camStream) activeMediaStreams.push(camStream);
+  if(audioStream) activeMediaStreams.push(audioStream);
   const qMap = Object.fromEntries(ex.questions.map(q=>[q.id,q]));
-  S = {ex, att, idx:0, ans:{...(att.answers||{})}, done:false, locked:false, fsOk:false, qLeft: ex.qTimer||0};
+  S = {ex, att, idx:0, ans:{...(att.answers||{})}, done:false, locked:false, fsOk:false, qLeft: ex.qTimer||0, audioWarnings:0, noFaceCount:0};
   document.documentElement.requestFullscreen?.().then(()=>S.fsOk=true).catch(()=>{});
   arm();
+  // علامة مائية متحركة تحمل اسم الطالب ورقمه والوقت لفضح أي تصوير خارجي
   const wm=document.createElement('div');wm.id='wm';
-  wm.style.backgroundImage=`url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='320' height='190'><text x='15' y='95' fill='rgba(15,23,42,0.06)' font-family='sans-serif' font-size='15' transform='rotate(-24 150 95)'>Itqan | ${att.name} - ${att.sid}</text></svg>`)}")`;
+  const nowStr = new Date().toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+  wm.style.backgroundImage=`url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='340' height='200'><text x='15' y='95' fill='rgba(15,23,42,0.075)' font-family='sans-serif' font-weight='bold' font-size='15' transform='rotate(-24 150 95)'>Itqan | ${att.name} - ${att.sid} (${nowStr})</text></svg>`)}")`;
   document.body.appendChild(wm);
+
+  // 1. تشغيل المراقبة الذكية بالكاميرا لكشف الهاتف الثاني أو تغطية العدسة
+  if(ex.antiCam && camStream){
+    const camBox = document.createElement('div');
+    camBox.id = 'proctorCamBox';
+    camBox.innerHTML = `<video id="proctorCam" autoplay playsinline muted></video><div style="font-size:10px;font-weight:800;color:#0ea5e9;margin-top:2px">📷 مراقبة نشطة</div>`;
+    document.body.appendChild(camBox);
+    const vid = $('#proctorCam');
+    vid.srcObject = camStream;
+    (async()=>{
+      try{
+        if(typeof cocoSsd !== 'undefined'){
+          const model = await cocoSsd.load();
+          const checkCover = (v) => {
+            const c = document.createElement('canvas'); c.width=64; c.height=48;
+            const ctx = c.getContext('2d'); ctx.drawImage(v,0,0,64,48);
+            const d = ctx.getImageData(0,0,64,48).data;
+            let sum = 0; for(let i=0;i<d.length;i+=4) sum += (d[i]+d[i+1]+d[i+2])/3;
+            return (sum/(64*48)) < 12;
+          };
+          loops.push(setInterval(async()=>{
+            if(!S||S.done||S.locked||Date.now()<S.armAt||vid.readyState!==4) return;
+            if(checkCover(vid)) return violation('تغطية عدسة الكاميرا أثناء الاختبار');
+            const preds = await model.detect(vid);
+            let phoneFound = false, personFound = false;
+            preds.forEach(p => {
+              if(p.class === 'cell phone' && p.score > 0.58) phoneFound = true;
+              if(p.class === 'person' && p.score > 0.45) personFound = true;
+            });
+            if(phoneFound) return violation('رصد هاتف محمول إضافي عبر الكاميرا أثناء الاختبار');
+            if(!personFound){
+              S.noFaceCount++;
+              if(S.noFaceCount === 2) toast('⚠️ تنبيه: يرجى إبقاء وجهك واضحاً أمام الكاميرا!');
+              if(S.noFaceCount >= 4) return violation('ابتعاد الطالب عن الكاميرا لفترة طويلة');
+            } else { S.noFaceCount = 0; }
+          }, 1600));
+        }
+      }catch{}
+    })();
+  }
+
+  // 2. تشغيل مراقبة الميكروفون لمنع إملاء السؤال للذكاء الاصطناعي على هاتف آخر
+  if(ex.antiAudio && audioStream){
+    try{
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const analyser = audioCtx.createAnalyser();
+      const mic = audioCtx.createMediaStreamSource(audioStream);
+      mic.connect(analyser);
+      analyser.fftSize = 256;
+      const dataArr = new Uint8Array(analyser.frequencyBinCount);
+      let speechSec = 0;
+      loops.push(setInterval(()=>{
+        if(!S||S.done||S.locked||Date.now()<S.armAt) return;
+        analyser.getByteFrequencyData(dataArr);
+        const avgVol = dataArr.reduce((a,b)=>a+b,0) / dataArr.length;
+        if(avgVol > 42){
+          speechSec += 0.5;
+          if(speechSec >= 3){
+            speechSec = 0;
+            S.audioWarnings++;
+            if(S.audioWarnings >= 3) return violation('التحدث المستمر وإملاء الأسئلة صوتياً أثناء الاختبار');
+            toast(`⚠️ تحذير صوتي (${S.audioWarnings}/3): يُمنع التحدث أو إملاء الأسئلة بصوت مسموع!`);
+          }
+        } else {
+          speechSec = Math.max(0, speechSec - 0.25);
+        }
+      }, 500));
+    }catch{}
+  }
+
+  // 3. التحقق الدوري من قفل الجلسة الواحدة + البقاء داخل النطاق الجغرافي أثناء الاختبار
+  loops.push(setInterval(async()=>{
+    if(!S||S.done||S.locked) return;
+    try{
+      const curAtt = await fb(`attempts/${ex.id}/${att.id}`);
+      if(curAtt && curAtt.sessionToken && curAtt.sessionToken !== att.sessionToken){
+        return violation('محاولة فتح نفس الاختبار من هاتف أو جهاز آخر');
+      }
+      if(ex.geofence && ex.geofence.enabled){
+        await checkStudentGeofence(ex.geofence).catch(()=>violation('مغادرة النطاق الجغرافي لقاعة الاختبار'));
+      }
+    }catch{}
+  }, 25000));
 
   const goQ = (newIdx) => {
     sync();
@@ -1470,7 +1619,6 @@ function startExam(ex, att){
     S.qLeft = ex.qTimer || 0;
     render();
   };
-
   const render=()=>{
     document.body.classList.add('exam');
     const item = att.order[S.idx], q = qMap[item.id], a = S.ans[q.id];
@@ -1478,12 +1626,10 @@ function startExam(ex, att){
     if(q.type==='mcq'||q.type==='multi')inp=item.opts.map(oi=>`<button class="opt ${(q.type==='mcq'?a===oi:(a||[]).includes(oi))?'sel':''}" data-o="${oi}"><i>${q.type==='mcq'?'●':'✓'}</i><span>${esc(q.options[oi])}</span></button>`).join('');
     if(q.type==='tf')inp=[0,1].map(k=>`<button class="opt ${a===k?'sel':''}" data-o="${k}"><i>●</i><span>${k===0?'صح':'خطأ'}</span></button>`).join('');
     if(q.type==='short'||q.type==='essay')inp=`<textarea id="ta" placeholder="اكتب إجابتك هنا...">${esc(a||'')}</textarea>`;
-
     const navDots = att.order.map((it, i) => {
       const hasAns = S.ans[it.id] !== undefined && S.ans[it.id] !== '' && (!Array.isArray(S.ans[it.id]) || S.ans[it.id].length > 0);
       return `<button class="q-dot ${i===S.idx?'cur':hasAns?'ans':''}" ${ex.allowBack&&!ex.qTimer?`data-jump="${i}"`:'disabled'}>${i+1}</button>`;
     }).join('');
-
     app.innerHTML=`<div class="card">
       <div class="row between">
         <div><b>${esc(ex.title)}</b><div class="mut">${esc(att.name)} (${esc(att.sid)})</div></div>
@@ -1503,7 +1649,6 @@ function startExam(ex, att){
         ${S.idx<att.order.length-1?'<button class="btn pri" id="nx">التالي ←</button>':'<button class="btn ok" id="sb">✔ تسليم الاختبار</button>'}
       </div>
     </div>`;
-
     app.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{const v=+b.dataset.o;if(q.type==='multi'){const c=new Set(S.ans[q.id]||[]);c.has(v)?c.delete(v):c.add(v);S.ans[q.id]=[...c]}else S.ans[q.id]=v;sync();render()});
     app.querySelectorAll('[data-jump]').forEach(b=>b.onclick=()=>goQ(+b.dataset.jump));
     if($('#ta'))$('#ta').oninput=e=>{S.ans[q.id]=e.target.value};
@@ -1514,7 +1659,6 @@ function startExam(ex, att){
   const sync = () => fb(`attempts/${ex.id}/${att.id}`, 'PATCH', {answers:S.ans}).catch(()=>{});
   const totalSec = ex.duration * 60;
   const endAt = att.startedAt + totalSec * 1000;
-
   const tick = () => {
     const left = Math.max(0, Math.floor((endAt - Date.now()) / 1000));
     const el = $('#tm'), ring = $('#tmRing');
@@ -1538,7 +1682,6 @@ function startExam(ex, att){
   };
   render(); tick(); loops.push(setInterval(tick,1000));
 }
-
 async function submit(){
   if(!S||S.done)return; S.done=true; clearLoops();
   const {ex, att, ans} = S;
@@ -1553,7 +1696,6 @@ async function submit(){
   await fb(`attempts/${ex.id}/${att.id}`, 'PATCH', {answers:ans, status:'submitted', finishedAt:Date.now(), score, graded});
   end('submitted', score, att.total);
 }
-
 function downloadCertificate(stName, sid, exTitle, sc, tot, gi){
   const w = window.open('', '_blank', 'width=900,height=650');
   const today = new Date().toLocaleDateString('ar-EG', {year:'numeric', month:'long', day:'numeric'});
@@ -1577,7 +1719,6 @@ function downloadCertificate(stName, sid, exTitle, sc, tot, gi){
   </div></body></html>`);
   w.document.close();
 }
-
 function end(st, sc, tot){
   clearLoops(); document.exitFullscreen?.().catch(()=>{});
   const gi = getGradeInfo(sc||0, tot||1);
@@ -1587,7 +1728,7 @@ function end(st, sc, tot){
   show(`<div class="card center" style="max-width:500px;margin:4vh auto;padding:30px">
     <div class="big">${st==='submitted'?'🎉':'🚫'}</div>
     <h2>${st==='submitted'?'تم تسليم الاختبار بنجاح':'تم قفل الاختبار بسبب مخالفة'}</h2>
-    <p class="mut" style="margin:10px 0">${st==='submitted'?'تم حفظ إجاباتك في سجل المعلم بنجاح.':'تم رصد محاولة خروج أو تصوير للشاشة وإبلاغ المعلم فوراً.'}</p>
+    <p class="mut" style="margin:10px 0">${st==='submitted'?'تم حفظ إجاباتك في سجل المعلم بنجاح.':'تم رصد مخالفة أمنية وإبلاغ المعلم فوراً.'}</p>
     ${st==='submitted'&&S.ex.showScore?`<div class="card-soft" style="margin-top:16px">
       <h3>درجتك: ${sc} من ${tot} (${gi.pct}%)</h3>
       <span class="badge ${gi.cls}" style="font-size:15px;margin-top:6px">التقدير: ${gi.grade} — ${gi.status}</span>
@@ -1597,10 +1738,10 @@ function end(st, sc, tot){
   </div>`, 'home');
   if($('#certBtn')) $('#certBtn').onclick = () => downloadCertificate(S.att.name, S.att.sid, S.ex.title, sc, tot, gi);
 }
-
 async function violation(reason){
   if(!S||S.done||S.locked||Date.now()<S.armAt)return;
   S.locked=true;
+  stopProctoringMedia();
   let token = '';
   try{ if(auth.currentUser) token = await auth.currentUser.getIdToken(); }catch{}
   const u = `${FIREBASE_URL}/attempts/${S.ex.id}/${S.att.id}.json${token ? `?auth=${token}` : ''}`;
@@ -1609,14 +1750,11 @@ async function violation(reason){
   fb(`attempts/${S.ex.id}/${S.att.id}/violations`, 'POST', {t:Date.now(), r:reason}).catch(()=>{});
   end('locked');
 }
-
 function arm(){
   const V=r=>violation(r);
   const blurOn=()=>{if(S&&!S.done)app.style.filter='blur(28px)'};
   S.armAt=Date.now()+2000;
   let initW=window.innerWidth,initH=window.innerHeight;
-
-  // 1. فحص دوري سريع كل 400 مللي ثانية: يكتشف أي نافذة عائمة نشطة فوق المتصفح
   loops.push(setInterval(()=>{
     if(!S||S.done||S.locked||Date.now()<S.armAt)return;
     if(document.hidden || !document.hasFocus()){
@@ -1624,25 +1762,19 @@ function arm(){
       V('فتح تطبيق عائم أو فقدان التركيز أثناء الاختبار');
     }
   },400));
-
-  // 2. القفل الفوري (بدون أي تأخير) عند لمس تطبيق عائم أو شريط الإشعارات
   window.addEventListener('blur',()=>{
     if(!S||S.done||S.locked||Date.now()<S.armAt)return;
     blurOn();
     V('التفاعل مع نافذة عائمة أو تطبيق خارجي');
   });
-
   document.addEventListener('visibilitychange',()=>{
     if(document.hidden){blurOn();V('ترك الصفحة / تبديل التطبيق')}
   });
-
   window.addEventListener('resize',()=>{
     if(S&&!S.done&&Date.now()>S.armAt&&(isSplitScreen()||Math.abs(window.innerWidth-initW)>90||Math.abs(window.innerHeight-initH)>110)){
       blurOn();V('محاولة تقسيم الشاشة أو تصغير النافذة');
     }
   });
-
-  // 3. رصد إيماءة 3 أصابع للتصوير + رصد سحب الشريط الجانبي لفتح التطبيقات العائمة
   document.addEventListener('touchstart',e=>{
     if(!S||S.done||Date.now()<S.armAt)return;
     if(e.touches && e.touches.length>=3){
@@ -1655,7 +1787,6 @@ function arm(){
       return V('محاولة سحب الشريط الجانبي لفتح نافذة عائمة');
     }
   },{passive:true});
-
   window.addEventListener('pagehide',()=>V('إغلاق أو تحديث الصفحة'));
   window.addEventListener('beforeunload',e=>{if(S&&!S.done){e.preventDefault();e.returnValue=''}});
   document.addEventListener('fullscreenchange',()=>{
@@ -1682,7 +1813,6 @@ document.addEventListener('selectionchange',()=>{
     }
   });
 }
-
 (async()=>{
   try{
     const cfg = await fb('sysConfig');
