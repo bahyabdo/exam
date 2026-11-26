@@ -1544,9 +1544,15 @@ function startExam(ex, att, camStream=null, audioStream=null){
         const objModel = (typeof cocoSsd !== 'undefined') ? await cocoSsd.load() : null;
         const faceModel = (typeof blazeface !== 'undefined') ? await blazeface.load() : null;
         let coverStrikes = 0;
-        let turnStrikes = 0;
+        let missingFaceTicks = 0;
+        let multiFaceTicks = 0;
+        let phoneTicks = 0;
+        let turnTicks = 0;
         let camStrikes = 0;
         let lastStrikeAt = 0;
+        let camCheckBusy = false;
+        let faceBaseline = [];
+        let cameraStatus = '📷 مراقبة نشطة';
 
         const registerCamStrike = (msg) => {
           const now = Date.now();
@@ -1562,7 +1568,9 @@ function startExam(ex, att, camStream=null, audioStream=null){
 
         const checkCover = (v) => {
           const c = document.createElement('canvas'); c.width=64; c.height=48;
-          const ctx = c.getContext('2d'); ctx.drawImage(v,0,0,64,48);
+          const ctx = c.getContext('2d', {willReadFrequently:true});
+          if(!ctx || !v.videoWidth || !v.videoHeight) return false;
+          ctx.drawImage(v,0,0,64,48);
           const d = ctx.getImageData(0,0,64,48).data;
           let sum = 0, sqSum = 0, n = 64 * 48;
           for(let i=0;i<d.length;i+=4){
@@ -1576,57 +1584,95 @@ function startExam(ex, att, camStream=null, audioStream=null){
         };
 
         loops.push(setInterval(async()=>{
-          if(!S||S.done||S.locked||Date.now()<S.armAt||vid.readyState!==4) return;
-
-          // أ) فحص تغطية العدسة
-          if(checkCover(vid)){
-            coverStrikes++;
-            if(coverStrikes >= 2){ coverStrikes = 0; registerCamStrike('تغطية عدسة الكاميرا'); }
-            return;
-          } else { coverStrikes = 0; }
-
-          // ب) كشف وجود هاتف آخر موجه للتصوير
-          if(objModel){
-            const preds = await objModel.detect(vid);
-            const phone = preds.find(p => p.class === 'cell phone' && p.score > 0.52);
-            if(phone){
-              return registerCamStrike('رصد هاتف محمول آخر أمام الكاميرا');
-            }
-          }
-
-          // ج) كشف التفات الوجه يميناً أو يساراً (بقياس موضع الأنف بالنسبة للعينين بدقة)
-          if(faceModel){
-            const faces = await faceModel.estimateFaces(vid, false);
-            if(!faces || faces.length === 0){
-              turnStrikes++;
-              if(turnStrikes >= 2){ turnStrikes = 0; registerCamStrike('اختفاء الوجه من أمام الكاميرا'); }
+          if(!S||S.done||S.locked||Date.now()<S.armAt||vid.readyState<2||!vid.videoWidth||camCheckBusy) return;
+          camCheckBusy = true;
+          try{
+            // أ) تغطية العدسة: تأكيد الحالة عبر 3 دورات لتقليل الإنذارات الكاذبة
+            if(checkCover(vid)){
+              coverStrikes++;
+              if(coverStrikes >= 3){ coverStrikes = 0; registerCamStrike('تغطية عدسة الكاميرا'); }
               return;
+            } else { coverStrikes = 0; }
+
+            // ب) الهاتف: لا تُسجل مخالفة إلا بعد ظهوره بثقة مرتفعة في 3 دورات متتالية
+            if(objModel){
+              const preds = await objModel.detect(vid);
+              const phone = preds.some(p => p.class === 'cell phone' && p.score > 0.65);
+              phoneTicks = phone ? phoneTicks + 1 : 0;
+              if(phoneTicks >= 3){
+                phoneTicks = 0;
+                registerCamStrike('رصد هاتف محمول آخر أمام الكاميرا');
+                return;
+              }
             }
-            if(faces.length > 1){
-              return registerCamStrike('وجود أكثر من شخص أمام الكاميرا');
-            }
-            const lm = faces[0].landmarks; // [0:عين يمنى, 1:عين يسرى, 2:أنف]
-            if(lm && lm.length >= 3){
-              const eye1X = lm[0][0], eye2X = lm[1][0], noseX = lm[2][0];
-              const eyeDist = Math.abs(eye2X - eye1X);
-              const eyesMidX = (eye1X + eye2X) / 2;
-              if(eyeDist > 12){
-                // انحراف الأنف عن منتصف العينين مقسوماً على المسافة بين العينين (0 = نظر مستقيم تماماً)
-                const yawOffset = Math.abs(noseX - eyesMidX) / eyeDist;
-                if(yawOffset > 0.48){
-                  turnStrikes++;
-                  if(turnStrikes >= 2){
-                    turnStrikes = 0;
-                    return registerCamStrike('الالتفات بالرأس يميناً أو يساراً بعيداً عن الشاشة');
+
+            // ج) الوجه: تحمّل الاختفاء العابر وتأكيد تعدد الوجوه قبل تسجيل مخالفة
+            if(faceModel){
+              const faces = await faceModel.estimateFaces(vid, false);
+              if(!faces || faces.length === 0){
+                missingFaceTicks++;
+                multiFaceTicks = 0;
+                if(missingFaceTicks >= 4){
+                  missingFaceTicks = 0;
+                  registerCamStrike('اختفاء الوجه من أمام الكاميرا');
+                }
+                return;
+              }
+              missingFaceTicks = 0;
+              if(faces.length > 1){
+                multiFaceTicks++;
+                if(multiFaceTicks >= 3){
+                  multiFaceTicks = 0;
+                  registerCamStrike('وجود أكثر من شخص أمام الكاميرا');
+                }
+                return;
+              }
+              multiFaceTicks = 0;
+
+              const lm = faces[0].landmarks; // [0:عين يمنى, 1:عين يسرى, 2:أنف]
+              if(lm && lm.length >= 3){
+                const eye1X = lm[0][0], eye2X = lm[1][0], noseX = lm[2][0];
+                const eyeDist = Math.abs(eye2X - eye1X);
+                const eyesMidX = (eye1X + eye2X) / 2;
+                if(eyeDist > 12){
+                  // إنشاء خط أساس شخصي من أول 8 قراءات مستقرة بدلاً من افتراض أن المنتصف واحد للجميع
+                  const offset = (noseX - eyesMidX) / eyeDist;
+                  if(faceBaseline.length < 8){
+                    faceBaseline.push(offset);
+                    turnTicks = 0;
+                  } else {
+                    const sorted = [...faceBaseline].sort((a,b)=>a-b);
+                    const baseline = (sorted[3] + sorted[4]) / 2;
+                    const deviation = Math.abs(offset - baseline);
+                    if(deviation > 0.38){
+                      turnTicks++;
+                      if(turnTicks >= 4){
+                        turnTicks = 0;
+                        registerCamStrike('الالتفات بالرأس يميناً أو يساراً بعيداً عن الشاشة');
+                      }
+                    } else {
+                      turnTicks = Math.max(0, turnTicks - 2);
+                    }
                   }
-                } else {
-                  turnStrikes = 0;
                 }
               }
             }
+          }catch(e){
+            // أخطاء تحميل/تحليل الإطار لا تُحتسب مخالفة على الطالب
+            if($('#camStat')){
+              $('#camStat').textContent = '📷 إعادة تهيئة فحص الكاميرا';
+              $('#camStat').style.color = '#d97706';
+            }
+          }finally{
+            camCheckBusy = false;
           }
         }, 1200));
-      }catch{}
+      }catch(e){
+        if($('#camStat')){
+          $('#camStat').textContent = '⚠️ تعذر تشغيل تحليل الكاميرا';
+          $('#camStat').style.color = '#d97706';
+        }
+      }
     })();
   }
 
@@ -1638,46 +1684,78 @@ function startExam(ex, att, camStream=null, audioStream=null){
       const analyser = audioCtx.createAnalyser();
       const mic = audioCtx.createMediaStreamSource(audioStream);
       mic.connect(analyser);
-      analyser.fftSize = 512;
+      analyser.fftSize = 1024;
+      analyser.smoothingTimeConstant = 0.25;
       const timeData = new Uint8Array(analyser.fftSize);
+      const freqData = new Uint8Array(analyser.frequencyBinCount);
       let talkTicks = 0;
       let baselineSamples = [];
       let noiseFloor = 1.5;
+      let warned = false;
 
       loops.push(setInterval(()=>{
         if(!S||S.done||S.locked) return;
         if(audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
         analyser.getByteTimeDomainData(timeData);
-        let sumSq = 0;
+        analyser.getByteFrequencyData(freqData);
+
+        let sumSq = 0, crossings = 0;
         for(let i=0;i<timeData.length;i++){
-          const norm = (timeData[i] - 128) / 128;
+          const centered = timeData[i] - 128;
+          const norm = centered / 128;
           sumSq += norm * norm;
+          if(i > 0 && ((timeData[i-1] < 128 && timeData[i] >= 128) || (timeData[i-1] >= 128 && timeData[i] < 128))) crossings++;
         }
         const rms = Math.sqrt(sumSq / timeData.length) * 100;
+        const zcr = crossings / timeData.length;
 
-        // أول 3 ثوانٍ: معايرة ضوضاء المكان تلقائياً
+        // تقدير نسبة الطاقة في نطاق الترددات الشائع للصوت البشري
+        const sampleRate = audioCtx.sampleRate;
+        const binHz = sampleRate / analyser.fftSize;
+        let totalEnergy = 0, voiceEnergy = 0;
+        for(let i=1;i<freqData.length;i++){
+          const energy = freqData[i] * freqData[i];
+          totalEnergy += energy;
+          const hz = i * binHz;
+          if(hz >= 250 && hz <= 3500) voiceEnergy += energy;
+        }
+        const voiceRatio = totalEnergy ? voiceEnergy / totalEnergy : 0;
+
+        // معايرة مستوى الضوضاء المحيطة أثناء فترة التهيئة الموجودة أصلاً في المنصة
         if(Date.now() < S.armAt){
           if(rms > 0) baselineSamples.push(rms);
           if(baselineSamples.length){
-            const avgBase = baselineSamples.reduce((a,b)=>a+b,0) / baselineSamples.length;
-            noiseFloor = Math.min(Math.max(avgBase * 1.6, 1.8), 6.0);
+            const sorted = [...baselineSamples].sort((a,b)=>a-b);
+            const quietSample = sorted[Math.floor((sorted.length - 1) * 0.60)];
+            noiseFloor = Math.min(Math.max(quietSample * 1.8, 2.2), 8.0);
           }
           return;
         }
 
-        if(rms > noiseFloor){
+        // الصوت وحده لا يكفي: يلزم مستوى أعلى من الضوضاء مع خصائص طيفية أقرب للكلام
+        const speechLike = rms > Math.max(noiseFloor * 2.0, noiseFloor + 2.2, 4.0)
+          && zcr >= 0.015 && zcr <= 0.28
+          && voiceRatio >= 0.55;
+
+        if(speechLike){
           talkTicks++;
-          if(talkTicks === 3){
-            toast('⚠️ تحذير صوتي: تم رصد صوت كلام! يُمنع التحدث أو إملاء الأسئلة، سيُغلق الاختبار فوراً!');
+          if(talkTicks >= 6 && !warned){
+            warned = true;
+            toast('⚠️ تحذير صوتي: تم رصد نشاط صوتي يشبه الكلام. يُرجى عدم التحدث أثناء الاختبار.');
           }
-          if(talkTicks >= 6){
-            return violation('التحدث وإملاء الأسئلة صوتياً أثناء الاختبار');
+          // اشتراط استمرار النشاط عدة ثوانٍ يقلل تأثر النظام بالأصوات القصيرة والعابرة
+          if(talkTicks >= 10){
+            return violation('رصد نشاط صوتي مستمر يشبه الكلام أثناء الاختبار');
           }
         } else {
-          talkTicks = Math.max(0, talkTicks - 1);
+          talkTicks = Math.max(0, talkTicks - 2);
+          if(talkTicks === 0) warned = false;
         }
       }, 450));
-    }catch{}
+    }catch(e){
+      // تعذر تشغيل الميكروفون لا يتحول إلى مخالفة تلقائية
+      console.warn('تعذر تشغيل مراقبة الميكروفون:', e);
+    }
   }
   // 3. التحقق الدوري من قفل الجلسة الواحدة + البقاء داخل النطاق الجغرافي أثناء الاختبار
   loops.push(setInterval(async()=>{
