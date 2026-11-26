@@ -13,6 +13,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface"></script>
 <style>
 :root{
   --bg1:#eef6ff;--bg2:#f8fafc;--card:#ffffff;--card2:#f1f5f9;--nav:rgba(255,255,255,.88);
@@ -1530,119 +1531,139 @@ function startExam(ex, att, camStream=null, audioStream=null){
   wm.style.backgroundImage=`url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='340' height='200'><text x='15' y='95' fill='rgba(15,23,42,0.075)' font-family='sans-serif' font-weight='bold' font-size='15' transform='rotate(-24 150 95)'>Itqan | ${att.name} - ${att.sid} (${nowStr})</text></svg>`)}")`;
   document.body.appendChild(wm);
 
-  // 1. تشغيل المراقبة الذكية بالكاميرا لكشف الهاتف الثاني أو تغطية العدسة
+ // 1. تشغيل المراقبة الذكية بالكاميرا (كشف الهاتف الثاني + التفات الوجه يميناً/يساراً + تغطية العدسة)
   if(ex.antiCam && camStream){
     const camBox = document.createElement('div');
     camBox.id = 'proctorCamBox';
-    camBox.innerHTML = `<video id="proctorCam" autoplay playsinline muted></video><div style="font-size:10px;font-weight:800;color:#0ea5e9;margin-top:2px">📷 مراقبة نشطة</div>`;
+    camBox.innerHTML = `<video id="proctorCam" autoplay playsinline muted></video><div id="camStat" style="font-size:10px;font-weight:800;color:#10b981;margin-top:2px">📷 مراقبة نشطة</div>`;
     document.body.appendChild(camBox);
     const vid = $('#proctorCam');
     vid.srcObject = camStream;
     (async()=>{
       try{
-        if(typeof cocoSsd !== 'undefined'){
-          const model = await cocoSsd.load();
-     let coverStrikes = 0;
-          const checkCover = (v) => {
-            const c = document.createElement('canvas'); c.width=64; c.height=48;
-            const ctx = c.getContext('2d'); ctx.drawImage(v,0,0,64,48);
-            const d = ctx.getImageData(0,0,64,48).data;
-            let sum = 0, sqSum = 0, n = 64 * 48;
-            for(let i=0;i<d.length;i+=4){
-              const lum = (d[i]+d[i+1]+d[i+2])/3;
-              sum += lum;
-              sqSum += lum * lum;
-            }
-            const mean = sum / n;
-            if(mean === 0) return false;
-            const variance = (sqSum / n) - (mean * mean);
-            return (mean < 12 && variance < 15);
-          };
-          loops.push(setInterval(async()=>{
-            if(!S||S.done||S.locked||Date.now()<S.armAt||vid.readyState!==4) return;
-            if(checkCover(vid)){
-              coverStrikes++;
-              if(coverStrikes === 1 || coverStrikes === 2){
-                toast(`⚠️ تنبيه (${coverStrikes}/3): عدسة الكاميرا مظلمة أو مغطاة، يرجى كشفها وتحسين الإضاءة!`);
-                return;
-              }
-              if(coverStrikes >= 3) return violation('تغطية عدسة الكاميرا أثناء الاختبار');
-            } else {
-              coverStrikes = 0;
-            }
-           const preds = await model.detect(vid);
-            const vw = vid.videoWidth || 320;
-            const vh = vid.videoHeight || 240;
-            let phoneFound = false, personFound = false;
+        const objModel = (typeof cocoSsd !== 'undefined') ? await cocoSsd.load() : null;
+        const faceModel = (typeof blazeface !== 'undefined') ? await blazeface.load() : null;
+        let coverStrikes = 0;
+        let camStrikes = 0; // عداد مخالفات الكاميرا (2 تحذير، والثالثة إغلاق فوري)
+        let lastStrikeAt = 0;
 
-            preds.forEach(p => {
-              if(p.class === 'person' && p.score > 0.35) personFound = true;
-              if(p.class === 'cell phone' && p.score > 0.85){
-                const [bx, by, bw, bh] = p.bbox;
-                const areaRatio = (bw * bh) / (vw * vh);
-                const bottomEdge = (by + bh) / vh;
-                // تجاهل أطراف الأصابع أسفل الشاشة أو الأجسام الصغيرة العابرة
-                if(areaRatio > 0.04 && bottomEdge < 0.92){
-                  phoneFound = true;
+        const registerCamStrike = (msg) => {
+          const now = Date.now();
+          if(now - lastStrikeAt < 3500) return; // فاصل 3.5 ثانية بين كل مخالفة وأخرى لتمكين الطالب من الانتباه
+          lastStrikeAt = now;
+          camStrikes++;
+          if(camStrikes >= 3){
+            return violation(`تكرار مخالفات الكاميرا (3 مرات): ${msg}`);
+          }
+          toast(`⚠️ مخالفة كاميرا (${camStrikes}/3): ${msg} — في المرة الثالثة سيُغلق الاختبار فوراً!`);
+          if($('#camStat')){ $('#camStat').textContent = `⚠️ مخالفات: ${camStrikes}/3`; $('#camStat').style.color = '#ef4444'; }
+        };
+
+        const checkCover = (v) => {
+          const c = document.createElement('canvas'); c.width=64; c.height=48;
+          const ctx = c.getContext('2d'); ctx.drawImage(v,0,0,64,48);
+          const d = ctx.getImageData(0,0,64,48).data;
+          let sum = 0, sqSum = 0, n = 64 * 48;
+          for(let i=0;i<d.length;i+=4){
+            const lum = (d[i]+d[i+1]+d[i+2])/3;
+            sum += lum; sqSum += lum * lum;
+          }
+          const mean = sum / n;
+          if(mean === 0) return false;
+          const variance = (sqSum / n) - (mean * mean);
+          return (mean < 14 && variance < 18);
+        };
+
+        loops.push(setInterval(async()=>{
+          if(!S||S.done||S.locked||Date.now()<S.armAt||vid.readyState!==4) return;
+
+          // أ) فحص تغطية العدسة
+          if(checkCover(vid)){
+            coverStrikes++;
+            if(coverStrikes >= 2){
+              coverStrikes = 0;
+              registerCamStrike('تغطية عدسة الكاميرا');
+            }
+            return;
+          } else { coverStrikes = 0; }
+
+          // ب) كشف وجود هاتف آخر موجه للتصوير (حساسية متوازنة 0.52 بدون تأخير)
+          if(objModel){
+            const preds = await objModel.detect(vid);
+            const phone = preds.find(p => p.class === 'cell phone' && p.score > 0.52);
+            if(phone){
+              return registerCamStrike('رصد هاتف محمول آخر أمام الشاشة');
+            }
+          }
+
+          // ج) كشف غياب الوجه أو التفات الرأس يميناً أو يساراً (BlazeFace)
+          if(faceModel){
+            const faces = await faceModel.estimateFaces(vid, false);
+            if(!faces || faces.length === 0){
+              return registerCamStrike('اختفاء الوجه من أمام الكاميرا');
+            }
+            if(faces.length > 1){
+              return registerCamStrike('وجود أكثر من شخص أمام الكاميرا');
+            }
+            // حساب زاوية التفات الوجه يميناً أو يساراً عبر مقارنة موقع الأنف بين الأذنين
+            const lm = faces[0].landmarks; // [0:عين يمنى, 1:عين يسرى, 2:أنف, 3:فم, 4:أذن يمنى, 5:أذن يسرى]
+            if(lm && lm.length >= 6){
+              const noseX = lm[2][0];
+              const rightEarX = lm[4][0];
+              const leftEarX = lm[5][0];
+              const earSpan = Math.abs(leftEarX - rightEarX);
+              if(earSpan > 15){
+                const noseRatio = Math.abs(noseX - rightEarX) / earSpan;
+                // في الوضع الطبيعي للنظر للشاشة تكون النسبة حول 0.50 (بين 0.22 و 0.78)
+                if(noseRatio < 0.20 || noseRatio > 0.80){
+                  return registerCamStrike('الالتفات بالرأس يميناً أو يساراً بعيداً عن الشاشة');
                 }
               }
-            });
-
-            if(phoneFound){
-              S.phoneHits = (S.phoneHits || 0) + 1;
-              if(S.phoneHits === 2){
-                toast('⚠️ تنبيه أمني: تم رصد جسم يشبه هاتفاً إضافياً أمام الكاميرا، أبعد أي هاتف آخر!');
-              }
-              if(S.phoneHits >= 4){
-                return violation('رصد هاتف محمول إضافي عبر الكاميرا أثناء الاختبار');
-              }
-            } else {
-              S.phoneHits = 0;
             }
-
-            if(!personFound){
-              S.noFaceCount = (S.noFaceCount || 0) + 1;
-              if(S.noFaceCount === 4){
-                toast('⚠️ تنبيه: يرجى إبقاء وجهك في نطاق الكاميرا الأمامية');
-              }
-            } else {
-              S.noFaceCount = 0;
-            }
-          }, 2000));
-        }
+          }
+        }, 1200));
       }catch{}
     })();
   }
 
-  // 2. تشغيل مراقبة الميكروفون لمنع إملاء السؤال للذكاء الاصطناعي على هاتف آخر
+  // 2. تشغيل مراقبة الميكروفون الدقيقة (قياس الطاقة الصوتية RMS لرصد إملاء الذكاء الاصطناعي أو الكلام)
   if(ex.antiAudio && audioStream){
     try{
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if(audioCtx.state === 'suspended') await audioCtx.resume().catch(()=>{});
       const analyser = audioCtx.createAnalyser();
       const mic = audioCtx.createMediaStreamSource(audioStream);
       mic.connect(analyser);
-      analyser.fftSize = 256;
-      const dataArr = new Uint8Array(analyser.frequencyBinCount);
-      let speechSec = 0;
+      analyser.fftSize = 512;
+      const timeData = new Uint8Array(analyser.fftSize);
+      let talkTicks = 0;
+
       loops.push(setInterval(()=>{
         if(!S||S.done||S.locked||Date.now()<S.armAt) return;
-        analyser.getByteFrequencyData(dataArr);
-        const avgVol = dataArr.reduce((a,b)=>a+b,0) / dataArr.length;
-        if(avgVol > 42){
-          speechSec += 0.5;
-          if(speechSec >= 3){
-            speechSec = 0;
-            S.audioWarnings++;
-            if(S.audioWarnings >= 3) return violation('التحدث المستمر وإملاء الأسئلة صوتياً أثناء الاختبار');
-            toast(`⚠️ تحذير صوتي (${S.audioWarnings}/3): يُمنع التحدث أو إملاء الأسئلة بصوت مسموع!`);
+        analyser.getByteTimeDomainData(timeData);
+        let sumSq = 0;
+        for(let i=0;i<timeData.length;i++){
+          const norm = (timeData[i] - 128) / 128;
+          sumSq += norm * norm;
+        }
+        const rms = Math.sqrt(sumSq / timeData.length) * 100; // مستوى الصوت الحقيقي من 0 إلى 100
+
+        // عتبة الكلام الطبيعي (تتراوح بين 4.5 و 15 عند التحدث بهدوء لهاتف ثانٍ)
+        if(rms > 4.2){
+          talkTicks++;
+          // إذا استمر الكلام لمدة 2.5 ثانية (5 نبضات × 500ms) -> تحذير، وإذا استمر 4.5 ثانية -> إغلاق فوري
+          if(talkTicks === 4){
+            toast('⚠️ تحذير صوتي: تم رصد صوت كلام! يُمنع التحدث أو إملاء الأسئلة، سيُغلق الاختبار فوراً إذا استمر الصوت!');
+          }
+          if(talkTicks >= 8){
+            return violation('التحدث وإملاء الأسئلة صوتياً أثناء الاختبار');
           }
         } else {
-          speechSec = Math.max(0, speechSec - 0.25);
+          talkTicks = Math.max(0, talkTicks - 1);
         }
       }, 500));
     }catch{}
   }
-
   // 3. التحقق الدوري من قفل الجلسة الواحدة + البقاء داخل النطاق الجغرافي أثناء الاختبار
   loops.push(setInterval(async()=>{
     if(!S||S.done||S.locked) return;
