@@ -1698,6 +1698,8 @@ function startExam(ex, att, camStream=null, audioStream=null){
       let noiseFloor = 1.5;
       let warned = false;
       let cooldownUntil = 0;
+      let voiceBase = null;
+      const voiceCalib = [];
 
       loops.push(setInterval(()=>{
         if(!S||S.done||S.locked) return;
@@ -1715,33 +1717,30 @@ function startExam(ex, att, camStream=null, audioStream=null){
         const rms = Math.sqrt(sumSq / timeData.length) * 100;
         const zcr = crossings / timeData.length;
 
-        // تقدير نسبة الطاقة في نطاق الترددات الشائع للصوت البشري
-        const sampleRate = audioCtx.sampleRate;
-        const binHz = sampleRate / analyser.fftSize;
-        let totalEnergy = 0, voiceEnergy = 0;
+        // مستوى الطاقة في نطاق الصوت البشري (300–3400 هرتز) بمقياس الديسيبل (قيمة 0–255، كل وحدة ≈ 0.27 ديسيبل)
+        const binHz = audioCtx.sampleRate / analyser.fftSize;
+        let vSum = 0, vCount = 0;
         for(let i=1;i<freqData.length;i++){
-          const energy = freqData[i] * freqData[i];
-          totalEnergy += energy;
           const hz = i * binHz;
-          if(hz >= 250 && hz <= 3500) voiceEnergy += energy;
+          if(hz >= 300 && hz <= 3400){ vSum += freqData[i]; vCount++; }
         }
-        const voiceRatio = totalEnergy ? voiceEnergy / totalEnergy : 0;
+        const voiceLevel = vCount ? vSum / vCount : 0;
 
-        // معايرة مستوى الضوضاء المحيطة أثناء فترة التهيئة الموجودة أصلاً في المنصة
+        // معايرة مستوى هدوء القاعة أثناء فترة التهيئة الموجودة أصلاً في المنصة
         if(Date.now() < S.armAt){
-          if(rms > 0) baselineSamples.push(rms);
-          if(baselineSamples.length){
-            const sorted = [...baselineSamples].sort((a,b)=>a-b);
-            const quietSample = sorted[Math.floor((sorted.length - 1) * 0.60)];
-            noiseFloor = Math.min(Math.max(quietSample * 1.8, 2.2), 8.0);
-          }
+          voiceCalib.push(voiceLevel);
           return;
         }
+        if(voiceBase === null){
+          const sorted = voiceCalib.length ? [...voiceCalib].sort((x,y)=>x-y) : [voiceLevel];
+          voiceBase = sorted[Math.floor((sorted.length - 1) * 0.5)];
+        }
 
-        // الصوت وحده لا يكفي: يلزم مستوى أعلى من الضوضاء مع خصائص طيفية أقرب للكلام
-        const speechLike = rms > Math.max(noiseFloor * 2.0, noiseFloor + 2.2, 4.0)
-          && zcr >= 0.015 && zcr <= 0.28
-          && voiceRatio >= 0.55;
+        // الكلام = ارتفاع واضح (≈ 8 ديسيبل) فوق هدوء القاعة في نطاق الصوت + مستوى صوت فعلي غير ضئيل
+        const speechLike = (voiceLevel - voiceBase) >= 30 && rms >= 1.2;
+        // تكيّف بطيء مع ضوضاء القاعة (مروحة/تكييف) عندما لا يوجد كلام، حتى لا تحدث إنذارات كاذبة
+        if(!speechLike && (voiceLevel - voiceBase) < 15) voiceBase = voiceBase * 0.98 + voiceLevel * 0.02;
+        if(window.DEBUG_MIC) console.log('MIC', {voiceLevel:Math.round(voiceLevel), voiceBase:Math.round(voiceBase), rms:+rms.toFixed(2), speechLike, talkTicks, ctx:audioCtx.state});
 
         if(Date.now() < cooldownUntil){ talkTicks = 0; return; }
         if(speechLike){
@@ -1757,8 +1756,7 @@ function startExam(ex, att, camStream=null, audioStream=null){
             toast(`⚠️ تحذير صوتي (${S.audioWarnings}/2): تم رصد نشاط صوتي يشبه الكلام. يُرجى عدم التحدث — في المرة الثالثة سيُغلق الاختبار!`);
           }
         } else {
-          talkTicks = Math.max(0, talkTicks - 2);
-          if(talkTicks === 0) warned = false;
+          talkTicks = Math.max(0, talkTicks - 1);
         }
       }, 450));
     }catch(e){
