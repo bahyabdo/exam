@@ -263,9 +263,10 @@ function getGradeInfo(score, total){
   if(pct >= 50) return {pct, grade:'مقبول', status:'ناجح', cls:'b-warn'};
   return {pct, grade:'ضعيف', status:'راسب', cls:'b-bad'};
 }
+const authReady = new Promise(res => { const un = auth.onAuthStateChanged(() => { un(); res(); }); });
 async function fb(path, method='GET', body=null){
   let token = '';
-  try{ if(auth.currentUser) token = await auth.currentUser.getIdToken(); }catch{}
+  try{ await authReady; if(auth.currentUser) token = await auth.currentUser.getIdToken(); }catch{}
   const url = `${FIREBASE_URL}/${path}.json${token ? `?auth=${token}` : ''}`;
   const opt = {method, headers:{'Content-Type':'application/json'}};
   if(body !== null) opt.body = JSON.stringify(body);
