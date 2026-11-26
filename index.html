@@ -1518,9 +1518,9 @@ function sJoin(pc=''){
   };
 }
 function startExam(ex, att, camStream=null, audioStream=null){
-  clearLoops();
-  if(camStream) activeMediaStreams.push(camStream);
-  if(audioStream) activeMediaStreams.push(audioStream);
+  loops.forEach(clearInterval); loops=[];
+  if(camStream && !activeMediaStreams.includes(camStream)) activeMediaStreams.push(camStream);
+  if(audioStream && !activeMediaStreams.includes(audioStream)) activeMediaStreams.push(audioStream);
   const qMap = Object.fromEntries(ex.questions.map(q=>[q.id,q]));
   S = {ex, att, idx:0, ans:{...(att.answers||{})}, done:false, locked:false, fsOk:false, qLeft: ex.qTimer||0, audioWarnings:0, noFaceCount:0};
   document.documentElement.requestFullscreen?.().then(()=>S.fsOk=true).catch(()=>{});
@@ -1585,6 +1585,11 @@ function startExam(ex, att, camStream=null, audioStream=null){
 
         loops.push(setInterval(async()=>{
           if(!S||S.done||S.locked||Date.now()<S.armAt||vid.readyState<2||!vid.videoWidth||camCheckBusy) return;
+          const camTrack = camStream.getVideoTracks()[0];
+          if(!camTrack || camTrack.readyState !== 'live' || camTrack.muted){
+            if($('#camStat')){ $('#camStat').textContent = '⚠️ الكاميرا متوقفة تقنياً'; $('#camStat').style.color = '#d97706'; }
+            return;
+          }
           camCheckBusy = true;
           try{
             // أ) تغطية العدسة: تأكيد الحالة عبر 3 دورات لتقليل الإنذارات الكاذبة
@@ -1692,6 +1697,7 @@ function startExam(ex, att, camStream=null, audioStream=null){
       let baselineSamples = [];
       let noiseFloor = 1.5;
       let warned = false;
+      let cooldownUntil = 0;
 
       loops.push(setInterval(()=>{
         if(!S||S.done||S.locked) return;
@@ -1737,15 +1743,18 @@ function startExam(ex, att, camStream=null, audioStream=null){
           && zcr >= 0.015 && zcr <= 0.28
           && voiceRatio >= 0.55;
 
+        if(Date.now() < cooldownUntil){ talkTicks = 0; return; }
         if(speechLike){
           talkTicks++;
-          if(talkTicks >= 6 && !warned){
-            warned = true;
-            toast('⚠️ تحذير صوتي: تم رصد نشاط صوتي يشبه الكلام. يُرجى عدم التحدث أثناء الاختبار.');
-          }
-          // اشتراط استمرار النشاط عدة ثوانٍ يقلل تأثر النظام بالأصوات القصيرة والعابرة
-          if(talkTicks >= 10){
-            return violation('رصد نشاط صوتي مستمر يشبه الكلام أثناء الاختبار');
+          // اشتراط استمرار الكلام عدة ثوانٍ يقلل تأثر النظام بالأصوات القصيرة والعابرة
+          if(talkTicks >= 6){
+            talkTicks = 0;
+            S.audioWarnings = (S.audioWarnings || 0) + 1;
+            if(S.audioWarnings >= 3){
+              return violation('تكرار رصد نشاط صوتي يشبه الكلام بعد تحذيرين');
+            }
+            cooldownUntil = Date.now() + 8000;
+            toast(`⚠️ تحذير صوتي (${S.audioWarnings}/2): تم رصد نشاط صوتي يشبه الكلام. يُرجى عدم التحدث — في المرة الثالثة سيُغلق الاختبار!`);
           }
         } else {
           talkTicks = Math.max(0, talkTicks - 2);
