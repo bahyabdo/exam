@@ -1079,7 +1079,7 @@ async function live(id){
         if(left<=0){ left=ex.rotate; rot(); }
       },1000));
     }
-    loops.push(setInterval(poll, 3500));
+    loops.push(setInterval(() => { if(!document.hidden) poll(); }, 12000));
   };
   if(ex.open && !ex.code) await rot(); else draw();
   poll(); startTimers();
@@ -1448,6 +1448,23 @@ async function rootInspectTeacher(tid){
   $('#clM').onclick = () => m.remove();
 }
 /* ============== بوابة الطالب والحماية + الموقع الجغرافي + الكاميرا والصوت + خريطة الأسئلة + المؤقت + الشهادة ============== */
+const PRIVACY_CONTACT = 'يرجى التواصل مع معلم الاختبار أو إدارة المنصة';
+function showPrivacy(){
+  const m = document.createElement('div'); m.className = 'modal';
+  m.innerHTML = `<div style="max-width:640px;max-height:85vh;overflow:auto;line-height:1.9">
+    <div class="row between"><h2 style="margin:0">🔒 سياسة الخصوصية وموافقة الطالب</h2><button class="btn sm" id="pvx">✕</button></div>
+    <p><b>الجهة المشغّلة:</b> منصة إتقان للاختبارات الإلكترونية.</p>
+    <p><b>البيانات التي نحفظها:</b> اسمك، ورقمك الجامعي أو رقم الجلوس، وإجاباتك ودرجتك، وأوقات بدء الاختبار وتسليمه، وسجل المخالفات مع سببها (مثل مغادرة صفحة الاختبار أو عدم ظهور الوجه أو رصد نشاط صوتي).</p>
+    <p><b>الكاميرا والميكروفون (إذا فعّلهما المعلم):</b> تُعالَج داخل جهازك فقط لاكتشاف المخالفات (ظهور الوجه، اتجاه الرأس، وجود هاتف، نشاط صوتي مستمر). <b>لا يُسجَّل ولا يُرفع أي فيديو أو صورة أو صوت</b>؛ ما يُحفظ هو سجل المخالفة ونصها فقط.</p>
+    <p><b>الموقع الجغرافي (إذا فعّله المعلم):</b> يُستخدم للتحقق من وجودك داخل قاعة الاختبار أثناء الاختبار، ولا يُحفظ موقعك.</p>
+    <p><b>من يطّلع على بياناتك:</b> معلم الاختبار وإدارة المنصة فقط. تُخزَّن البيانات على خدمة Firebase التابعة لشركة Google.</p>
+    <p><b>مدة الحفظ:</b> تُحذف الاختبارات ونتائجها تلقائياً بعد 5 أشهر من آخر استخدام للاختبار.</p>
+    <p><b>حقوقك:</b> يمكنك طلب الاطلاع على بياناتك أو تصحيحها أو حذفها. ${esc(PRIVACY_CONTACT)}.</p>
+    <p><b>الطلاب دون السن القانونية:</b> بالمتابعة يُقرّ ولي الأمر أو المسؤول عن الطالب بموافقته على ما سبق.</p>
+    <button class="btn pri" id="pvok" style="width:100%">فهمت</button></div>`;
+  document.body.appendChild(m);
+  $('#pvx').onclick = $('#pvok').onclick = () => m.remove();
+}
 function sJoin(pc=''){
   clearLoops();
   show(`<div style="max-width:450px;margin:2vh auto"><div class="card">
@@ -1456,11 +1473,14 @@ function sJoin(pc=''){
     <label>كود الدخول (6 أرقام)</label><input id="cd" dir="ltr" maxlength="6" style="font-size:24px;text-align:center;letter-spacing:.2em;font-weight:800" value="${esc(pc)}">
     <label>اسم الطالب الثلاثي</label><input id="nm" placeholder="اكتب اسمك الكامل">
     <label>الرقم الجامعي / رقم الجلوس</label><input id="si" dir="ltr" placeholder="2026001">
-    <button class="btn pri" id="st" style="width:100%;margin-top:16px;padding:13px">🚀 بدء الاختبار الآن</button></div></div>`, 'student');
+    <label style="display:flex;align-items:flex-start;gap:8px;margin-top:14px;font-size:13px;line-height:1.7;cursor:pointer"><input type="checkbox" id="cn" style="width:18px;height:18px;margin:2px 0 0;flex:none"><span>أوافق على <a href="#" id="pv" style="font-weight:800">سياسة الخصوصية</a> ومعالجة الكاميرا والميكروفون والموقع داخل جهازي لأغراض مراقبة الاختبار (وإن كنت دون السن القانونية فقد وافق ولي أمري).</span></label>
+<button class="btn pri" id="st" style="width:100%;margin-top:16px;padding:13px">🚀 بدء الاختبار الآن</button></div></div>`, 'student');
+  $('#pv').onclick = e => { e.preventDefault(); showPrivacy(); };
   $('#st').onclick=async()=>{
     try{
       const code=$('#cd').value.trim(), name=$('#nm').value.trim(), sid=$('#si').value.trim();
       if(!code||!name||!sid) return toast('أكمل جميع البيانات أولاً');
+        if(!$('#cn').checked) return toast('يجب الموافقة على سياسة الخصوصية للمتابعة');
       const all = await fb(`exams?${qEq('code', code)}`) || {};
       const ex = Object.values(all).find(x => x && x.open && String(x.code) === code);
       if(!ex) return toast('كود الدخول غير صحيح أو انتهت صلاحيته');
@@ -1513,7 +1533,7 @@ function sJoin(pc=''){
         const order = qs.map(q=>({id:q.id, opts:(q.type==='mcq'||q.type==='multi')?(ex.shuffleO?shuffle(q.options.map((_,i)=>i)):q.options.map((_,i)=>i)):null}));
         const total = ex.questions.reduce((s,q)=>s+(+q.points||1),0);
         const aid = attKey(sid);
-        att = {id:aid, examId:ex.id, name, sid, status:'active', startedAt:Date.now(), answers:{}, total, order, sessionToken};
+        att = {id:aid, examId:ex.id, name, sid, status:'active', startedAt:Date.now(), consentAt:Date.now(), answers:{}, total, order, sessionToken};
         await fb(`attempts/${ex.id}/${aid}`, 'PUT', att);
       } else {
         att.sessionToken = sessionToken;
